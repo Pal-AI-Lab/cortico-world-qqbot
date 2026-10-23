@@ -1,0 +1,415 @@
+{
+  "tools": [
+    {
+      "name": "qqofficial_send_message",
+      "description": "向指定 QQ Official 会话发送文本或 Markdown。replyTo 与 eventId 互斥；省略二者为主动消息。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "c2c",
+                  "group",
+                  "channel",
+                  "dms"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "text",
+              "markdown"
+            ]
+          },
+          "replyTo": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "referenceId": {
+            "type": "string"
+          },
+          "keyboard": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "target",
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "speak"
+      ],
+      "summary": {
+        "zh": "发送文本或 Markdown 消息。",
+        "en": "Sends text or Markdown messages."
+      }
+    },
+    {
+      "name": "qqofficial_send_media",
+      "description": "向 QQ Official 发送一个媒体附件。url 与 blob 仅填一个；blob 是 log:/mem: 句柄。fileType: 1 图片、2 视频、3 语音、4 文件。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "c2c",
+                  "group",
+                  "channel",
+                  "dms"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "url": {
+            "type": "string"
+          },
+          "blob": {
+            "type": "string"
+          },
+          "fileType": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "replyTo": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "fileType"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "speak"
+      ],
+      "summary": {
+        "zh": "发送图片、语音、视频或文件。",
+        "en": "Sends images, voice, video or files."
+      }
+    },
+    {
+      "name": "qqofficial_stream_message",
+      "description": "向 C2C 发送一个文本或 Markdown 流式分片。省略 streamId 开始新消息；续片使用返回的 streamId。finish 默认为 true。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "c2c",
+                  "group",
+                  "channel",
+                  "dms"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "content": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "text",
+              "markdown"
+            ]
+          },
+          "replyTo": {
+            "type": "string"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "streamId": {
+            "type": "string"
+          },
+          "finish": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "target",
+          "content"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "speak"
+      ],
+      "summary": {
+        "zh": "向 QQ 单聊发送流式消息分片。",
+        "en": "Sends streaming message parts to a QQ direct chat."
+      }
+    },
+    {
+      "name": "qqofficial_delete_message",
+      "description": "撤回指定会话中机器人发送的消息；平台决定权限和有效期。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "c2c",
+                  "group",
+                  "channel",
+                  "dms"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "messageId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "messageId"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "act"
+      ],
+      "summary": {
+        "zh": "撤回机器人发送的消息。",
+        "en": "Recalls messages sent by the bot."
+      }
+    },
+    {
+      "name": "qqofficial_history",
+      "description": "查询本 World 的事件历史，可按会话和游标筛选。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "target": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "kind",
+              "id"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "c2c",
+                  "group",
+                  "channel",
+                  "dms"
+                ]
+              },
+              "id": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "beforeCursor": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "tags": [
+        "read"
+      ],
+      "summary": {
+        "zh": "读取当前机器人在 Core 中保存的事件历史。",
+        "en": "Reads this bot’s event history stored by Core."
+      }
+    },
+    {
+      "name": "qqofficial_read_attachment",
+      "description": "读取已保存的 QQ Official 消息附件。cursor 来自事件历史，index 是 data.attachments 中从 0 开始的序号；只读取 QQ CDN 地址。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "cursor": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "cursor",
+          "index"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "read"
+      ],
+      "summary": {
+        "zh": "读取已保存消息的 QQ CDN 附件。",
+        "en": "Reads QQ CDN attachments from stored messages."
+      }
+    },
+    {
+      "name": "qqofficial_ack_interaction",
+      "description": "确认互动事件；code=0 成功、1 失败、2 太频繁、3 重复、4 无权限、5 仅管理员可操作。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "interactionId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          }
+        },
+        "required": [
+          "interactionId",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "tags": [
+        "act"
+      ],
+      "summary": {
+        "zh": "确认平台互动事件。",
+        "en": "Acknowledges platform interactions."
+      }
+    }
+  ],
+  "events": [
+    {
+      "type": "qqofficial.message",
+      "trigger": "debounce",
+      "description": {
+        "zh": "收到 QQ 消息，保留正文、会话和原始字段。",
+        "en": "An incoming QQ message, with its target and original fields."
+      }
+    },
+    {
+      "type": "qqofficial.notice",
+      "trigger": "debounce",
+      "description": {
+        "zh": "收到互动、关系变化或其他平台事件。",
+        "en": "An interaction, relationship change or other platform event."
+      }
+    },
+    {
+      "type": "qqofficial.sent",
+      "tags": [
+        "speak"
+      ],
+      "description": {
+        "zh": "平台接受发送请求的存档回执，不唤醒模型。",
+        "en": "An archived send receipt; does not wake the model."
+      }
+    },
+    {
+      "type": "qqofficial.attempt",
+      "description": {
+        "zh": "发送前持久化的序号预留，不唤醒模型。",
+        "en": "A sequence reservation persisted before sending; does not wake the model."
+      }
+    },
+    {
+      "type": "qqofficial.removed",
+      "description": {
+        "zh": "平台接受撤回请求的存档回执，不唤醒模型。",
+        "en": "An archived recall receipt; does not wake the model."
+      }
+    },
+    {
+      "type": "qqofficial.acknowledged",
+      "description": {
+        "zh": "平台接受互动确认的存档回执，不唤醒模型。",
+        "en": "An archived interaction acknowledgement; does not wake the model."
+      }
+    }
+  ],
+  "prompts": [
+    {
+      "key": "worlds.qqofficial.envPrompt",
+      "title": "环境提示词",
+      "role": "envPrompt",
+      "content": "{{qqofficial.environment}}\n"
+    }
+  ]
+}

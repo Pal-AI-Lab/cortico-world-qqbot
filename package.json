@@ -1,0 +1,77 @@
+{
+  "name": "cortico-world-qq-official",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "QQ Official API World for Cortico: gateway and webhook events, messaging and media",
+  "license": "AGPL-3.0-or-later",
+  "author": "leafliber",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/leafliber/cortico-world-qq-official.git"
+  },
+  "bugs": {
+    "url": "https://github.com/leafliber/cortico-world-qq-official/issues"
+  },
+  "keywords": [
+    "cortico-world",
+    "cortico",
+    "qqofficial"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "pnpm@11.5.0",
+  "main": "./src/index.ts",
+  "cortico": {
+    "kind": "world",
+    "api": 6,
+    "webUiClient": "src/webui.js",
+    "tags": [
+      "im",
+      "qq",
+      "requires-key",
+      "experimental"
+    ],
+    "describe": "describe.json",
+    "locales": {
+      "zh": {
+        "displayName": "QQ Official",
+        "description": "通过 QQ 官方接口收取事件、发送消息和媒体，支持 QQ 机器人凭证绑定。"
+      },
+      "en": {
+        "displayName": "QQ Official",
+        "description": "QQ Official API events, messaging, media and bot credential binding."
+      }
+    }
+  },
+  "files": [
+    "src",
+    "README.md",
+    "README_zh.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "describe.json"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.web.json",
+    "describe": "node --import tsx scripts/extension.ts describe",
+    "check:extension": "node --import tsx scripts/extension.ts check",
+    "build": "pnpm describe && pnpm check:extension",
+    "pack:api5": "node --import tsx scripts/pack-api5.ts",
+    "verify": "pnpm typecheck && pnpm test && pnpm check:extension"
+  },
+  "dependencies": {
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^22.20.4",
+    "@types/ws": "^8.18.1",
+    "cortico": "0.2.6",
+    "jsdom": "^30.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.9"
+  }
+}
