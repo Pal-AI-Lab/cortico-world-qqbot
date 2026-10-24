@@ -1,7 +1,7 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/icon.svg" alt="QQ Official World" width="88" height="88">
+  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/icon.png" alt="QQ Official World" width="88" height="88">
 </p>
 
 # QQ Official World
@@ -23,21 +23,21 @@ World ID 为 `qqofficial`，可与使用其他协议、ID 为 `qq` 的 `cortico-
 
 以下截图使用扩展的真实面板代码、Cortico 界面组件与示例数据渲染，不含有效扫码授权、真实机器人凭证或私人聊天。
 
-![QQ 扫码连接面板](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connection-zh.png)
+![QQ 扫码连接面板](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connection-zh.png)
 
-![连接成功后隐藏二维码](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connected-zh.png)
+![连接成功后隐藏二维码](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connected-zh.png)
 
-![凭证与接入配置](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/configuration-zh.png)
+![凭证与接入配置](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/configuration-zh.png)
 
 ## 安装
 
 需要 Node.js 22 或更高版本；常见音频格式的收发转码和音频测试需要系统安装 FFmpeg（也可配置 `ffmpegPath`）。SILK 编解码器随 npm 依赖安装。主包使用 **Cortico World API 6**，开发依赖固定为 `cortico@0.2.6` SDK。
 
-在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.1`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
+在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.2`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
 
 ```sh
 cd extensions
-corepack pnpm add cortico-world-qq-official@0.2.1
+corepack pnpm add cortico-world-qq-official@0.2.2
 ```
 
 在源码目录运行：

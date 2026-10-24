@@ -2,9 +2,9 @@
 
 # Changelog
 
-## 0.2.1
+## 0.2.2
 
-- Complete the market listing with a display name, original icon, three panel previews, bilingual feature descriptions, author profile, homepage and discovery keywords.
+- Complete the market listing with a display name, project icon, three panel previews, bilingual feature descriptions, author profile, homepage and discovery keywords.
 - Add illustrated English and Chinese READMEs, with links to installation, support and release notes.
 - Keep the API 6 runtime and API 5 compatibility implementation unchanged from the verified 0.2.0 release.
 

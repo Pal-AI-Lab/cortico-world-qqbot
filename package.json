@@ -1,6 +1,6 @@
 {
   "name": "cortico-world-qq-official",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "QQ Official API integration for Cortico and Coopanion: QR binding, messaging, media and streamed replies",
   "license": "AGPL-3.0-or-later",
@@ -36,7 +36,7 @@
   "main": "./src/index.ts",
   "cortico": {
     "displayName": "QQ Official",
-    "icon": "assets/icon.svg",
+    "icon": "assets/icon.png",
     "kind": "world",
     "api": 6,
     "webUiClient": "src/webui.js",

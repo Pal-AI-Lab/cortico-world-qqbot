@@ -1,7 +1,7 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/icon.svg" alt="QQ Official World" width="88" height="88">
+  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/icon.png" alt="QQ Official World" width="88" height="88">
 </p>
 
 # QQ Official World
@@ -23,21 +23,21 @@ By [leafliber](https://github.com/leafliber) · [npm](https://www.npmjs.com/pack
 
 The screenshots render the actual extension panels with Cortico UI components and sample data. They contain no live QR authorization, bot credentials or private conversations.
 
-![QQ connection panel](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connection-zh.png)
+![QQ connection panel](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connection-zh.png)
 
-![Connection success panel with the QR code removed](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connected-zh.png)
+![Connection success panel with the QR code removed](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connected-zh.png)
 
-![Credentials and connection settings](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/configuration-zh.png)
+![Credentials and connection settings](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/configuration-zh.png)
 
 ## Install
 
 Requires Node.js 22 or later. Install FFmpeg for common audio transcoding and audio tests, or configure `ffmpegPath`. The SILK codec is installed as an npm dependency. The main package targets **Cortico World API 6** and is developed against the `cortico@0.2.6` SDK.
 
-In Cortico or Coopanion's extension page, select **World** and install `cortico-world-qq-official@0.2.1` from npm. Restart Core to load it. From an existing Cortico installation, the equivalent command is:
+In Cortico or Coopanion's extension page, select **World** and install `cortico-world-qq-official@0.2.2` from npm. Restart Core to load it. From an existing Cortico installation, the equivalent command is:
 
 ```sh
 cd extensions
-corepack pnpm add cortico-world-qq-official@0.2.1
+corepack pnpm add cortico-world-qq-official@0.2.2
 ```
 
 From a checkout:
