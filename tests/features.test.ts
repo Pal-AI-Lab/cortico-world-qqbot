@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setTimeout as delay } from 'node:timers/promises';
 import type { OutputTap, ToolOutcome } from 'cortico/core/types.ts';
 import { QQOfficialWorld } from '../src/world.ts';
 import { QQOFFICIAL_DEFAULTS, QQOFFICIAL_SECRET } from '../src/config.ts';
@@ -10,6 +11,8 @@ let world: QQOfficialWorld;
 let ctx: ReturnType<typeof context>;
 let api: Awaited<ReturnType<typeof httpServer>>;
 let mode = '';
+let tokenDelayMs = 0;
+let messageDelayMs = 0;
 let incomingMedia: Uint8Array;
 const uploads: Record<string, unknown>[] = [];
 const requests: Array<{ path: string; body: Record<string, unknown>; at: number }> = [];
@@ -30,8 +33,12 @@ const destination = { kind: 'c2c', id: 'user' };
 
 beforeEach(async () => {
   host = new TestHost(); requests.length = 0; uploads.length = 0; mode = ''; incomingMedia = new Uint8Array();
+  tokenDelayMs = 0; messageDelayMs = 0;
   api = await httpServer(async (req, res) => {
-    if (req.url === '/token') { json(res, { access_token: 'token', expires_in: 7200 }); return; }
+    if (req.url === '/token') {
+      if (tokenDelayMs) await delay(tokenDelayMs);
+      json(res, { access_token: 'token', expires_in: 7200 }); return;
+    }
     if (req.url === '/voice') { expect(req.headers.authorization).toBeUndefined(); res.setHeader('Content-Type', 'application/octet-stream'); res.end(incomingMedia); return; }
     expect(req.headers.authorization).toBe('QQBot token');
     let body: Record<string, unknown>;
@@ -41,6 +48,7 @@ beforeEach(async () => {
     } else body = await readBody(req);
     if (req.url!.endsWith('/files')) { uploads.push(body); json(res, { file_info: 'media', ttl: 30 }); return; }
     requests.push({ path: req.url!, body, at: Date.now() });
+    if (messageDelayMs) await delay(messageDelayMs);
     if (mode === 'no-stream' && req.url!.endsWith('/stream_messages')) { json(res, { code: 404 }, 404); return; }
     if (mode === 'stream-rejected' && Number(body.index) > 0 && String(body.content_raw ?? '').trim()) { json(res, { code: 40034006 }, 403); return; }
     if (body.content_type === 'markdown' && body.input_state === 10 && !String(body.content_raw).endsWith('\n')) { json(res, { code: 400, message: '流式消息md分片需要以换行结束' }, 400); return; }
@@ -84,21 +92,33 @@ describe('proactive delivery and known targets', () => {
     expect(await tool('send_message', { target: destination, content: 'bad', delivery: 'proactive', replyTo: 'in' })).toMatchObject({ failed: true });
   });
 
-  it('serializes proactive sends with the configured interval', async () => {
+  it.each([
+    { name: 'immediate responses', tokenMs: 0, messageMs: 0, firstContent: 'first' },
+    { name: 'a cold token', tokenMs: 80, messageMs: 0, firstContent: 'first' },
+    { name: 'a slow response', tokenMs: 0, messageMs: 80, firstContent: 'first' },
+    { name: 'a slow rejection', tokenMs: 0, messageMs: 80, firstContent: 'reject' },
+  ])('serializes proactive sends with the configured interval after $name', async ({ tokenMs, messageMs, firstContent }) => {
     ctx.value.cfg.proactiveIntervalMs = 40;
-    await Promise.all([1, 2].map(n => tool('send_message', { target: destination, content: String(n) })));
-    expect(requests[1].at - requests[0].at).toBeGreaterThanOrEqual(30);
+    tokenDelayMs = tokenMs; messageDelayMs = messageMs;
+    const results = await Promise.all([firstContent, 'second'].map(content => tool('send_message', { target: destination, content })));
+    if (firstContent === 'reject') expect(results[0]).toMatchObject({ failed: true });
+    else expect(typeof results[0]).toBe('string');
+    expect(typeof results[1]).toBe('string');
+    expect(requests).toHaveLength(2);
+    expect(requests[1].at - requests[0].at).toBeGreaterThanOrEqual(messageMs + 30);
   });
 });
 
 describe('bounded downgrade and failure outcomes', () => {
   it('falls back from an expired reply to proactive, then from rejected Markdown to text', async () => {
     mode = 'both';
+    ctx.value.cfg.proactiveIntervalMs = 40;
     const result = await tool('send_message', { target: destination, content: '**hi**', format: 'markdown', replyTo: 'expired' });
     expect(typeof result).toBe('string');
     expect(requests).toHaveLength(3);
     expect(requests[1].body.msg_id).toBeUndefined();
     expect(requests[2].body).toMatchObject({ content: '**hi**', msg_type: 0 });
+    expect(requests[2].at - requests[1].at).toBeGreaterThanOrEqual(30);
     const sent = host.store.range({ source: 'qqofficial' }).filter(e => e.type === 'qqofficial.sent');
     expect(sent).toHaveLength(1);
     expect(sent[0].meta?.fallbacks).toEqual(['proactive', 'text']);

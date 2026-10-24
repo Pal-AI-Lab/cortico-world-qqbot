@@ -381,7 +381,6 @@ export class QQOfficialWorld implements World {
       }
     }
     sequence ??= await this.prepare(destination, anchors);
-    if (!anchors.msg_id && !anchors.event_id && !prior) await this.proactive(destination, combined);
     if (prior) {
       await waitUntil(prior.at + this.cfg.streamIntervalMs, combined);
       await this.push('attempt', destination, { ...anchors, msg_seq: sequence, streamId: prior.streamId, index: streamData.index });
@@ -393,7 +392,7 @@ export class QQOfficialWorld implements World {
     let sent: Awaited<ReturnType<typeof sendWithFallback>>;
     try { sent = await sendWithFallback({ payload, signal: combined, fallback: args.fallback === undefined ? this.cfg.autoFallback : args.fallback === true,
       continuation: !!prior,
-      proactive: async () => { await this.proactive(destination, combined); return this.prepare(destination, {}); },
+      proactive: () => this.prepare(destination, {}),
       send: async final => {
         let body: JsonObject | FormData = final;
         if (multipart) {
@@ -401,9 +400,17 @@ export class QQOfficialWorld implements World {
           for (const [key, value] of Object.entries(final)) if (value !== undefined) form.set(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
           form.set('file_image', new Blob([new Uint8Array(multipart.bytes)]), multipart.name); body = form;
         }
-        const result = await this.client!.request('POST', `${route(destination)}/${suffix}`, body, combined);
-        if (typeof result.id !== 'string' || !result.id) throw new Error('QQ accepted the request without a message id; delivery is unknown, do not resend');
-        return result;
+        const proactive = !final.msg_id && !final.event_id && !prior;
+        if (proactive) await this.proactive(destination, combined);
+        try {
+          const result = await this.client!.request('POST', `${route(destination)}/${suffix}`, body, combined);
+          if (typeof result.id !== 'string' || !result.id) throw new Error('QQ accepted the request without a message id; delivery is unknown, do not resend');
+          return result;
+        } finally {
+          // Token refresh and network latency must not consume the next send's cooldown.
+          // Include rejected attempts so fallback retries obey the same interval.
+          if (proactive) this.lastProactiveAt = Date.now();
+        }
       },
     }); } catch (error) {
       if (prior && error instanceof QQOfficialApiError && error.rejected) {
@@ -456,7 +463,6 @@ export class QQOfficialWorld implements World {
   private async proactive(destination: QQOfficialTarget, signal: AbortSignal): Promise<void> {
     this.sessions.assertProactive(destination);
     await waitUntil(this.lastProactiveAt + this.cfg.proactiveIntervalMs, signal);
-    this.lastProactiveAt = Date.now();
   }
 
   private streamKey(destination: QQOfficialTarget, id: string): string { return JSON.stringify([targetKey(destination), id]); }
