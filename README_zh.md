@@ -1,7 +1,7 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/icon.png" alt="QQ Official World" width="88" height="88">
+  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/icon.png" alt="QQ Official World" width="88" height="88">
 </p>
 
 # QQ Official World
@@ -23,21 +23,21 @@ World ID 为 `qqofficial`，可与使用其他协议、ID 为 `qq` 的 `cortico-
 
 以下截图使用扩展的真实面板代码、Cortico 界面组件与示例数据渲染，不含有效扫码授权、真实机器人凭证或私人聊天。
 
-![QQ 扫码连接面板](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connection-zh.png)
+![QQ 扫码连接面板](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/connection-zh.png)
 
-![连接成功后隐藏二维码](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connected-zh.png)
+![连接成功后隐藏二维码](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/connected-zh.png)
 
-![凭证与接入配置](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/configuration-zh.png)
+![凭证与接入配置](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/configuration-zh.png)
 
 ## 安装
 
 需要 Node.js 22 或更高版本；常见音频格式的收发转码和音频测试需要系统安装 FFmpeg（也可配置 `ffmpegPath`）。SILK 编解码器随 npm 依赖安装。主包使用 **Cortico World API 6**，开发依赖固定为 `cortico@0.2.6` SDK。
 
-在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.2`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
+在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.3`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
 
 ```sh
 cd extensions
-corepack pnpm add cortico-world-qq-official@0.2.2
+corepack pnpm add cortico-world-qq-official@0.2.3
 ```
 
 在源码目录运行：
@@ -94,7 +94,7 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 | 工具 | 契约 |
 | --- | --- |
 | `qqofficial_send_message` | 发送文本或 Markdown，可携带消息引用和平台原生键盘对象。 |
-| `qqofficial_send_media` | 发送公开 URL、`log:`/`mem:` 附件或本地绝对路径，三者选一；类型 1 图片、2 视频、3 语音、4 文件；`items` 可顺序发送至多 8 项。 |
+| `qqofficial_send_media` | 发送公开 URL 或宿主管理的 `log:`/`mem:` 附件，二者选一；不接受本地路径；类型 1 图片、2 视频、3 语音、4 文件；`items` 可顺序发送至多 8 项。 |
 | `qqofficial_stream_message` | `followModel=true` 将下一轮模型公开正文发送到选定目标；也支持手动 C2C 分片。 |
 | `qqofficial_delete_message` | 撤回指定目标中机器人发送的消息。 |
 | `qqofficial_list_targets` | 列出当前 AppID 的已知会话、近期回复依据和主动接收状态。 |
@@ -110,11 +110,15 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 
 附件读取只接受 `qq.com`、`qq.com.cn`、`qpic.cn`、`ugcimg.cn` 及其子域的 HTTPS 地址，每次重定向重新校验，下载请求不携带机器人认证头。Core 按当前模型能力决定是否传递对应 MIME 类型；仅有 URL 和元数据不会被视为已经看见或听见附件。
 
-频道和频道私信支持文本、Markdown、远程图片及本地图片 multipart 上传，C2C 与群聊支持图片、语音、视频和文件。上传读取和附件下载默认上限为 100 MiB；发送还受图片 30 MiB、语音 20 MiB、视频和文件 100 MiB 的本地上限约束，QQ 可另行收紧。5 MiB 起使用平台分块上传协议，校验完整分块计划、逐块确认后合并，并按平台 TTL 缓存文件句柄。批量发送遇错即停止，返回已成功项与失败位置，避免整批重发。
+频道和频道私信支持文本、Markdown、远程图片及宿主附件图片的 multipart 上传，C2C 与群聊支持图片、语音、视频和文件。上传读取和附件下载默认上限为 100 MiB；发送还受图片 30 MiB、语音 20 MiB、视频和文件 100 MiB 的本地上限约束，QQ 可另行收紧。5 MiB 起使用平台分块上传协议，校验完整分块计划、逐块确认后合并，并按平台 TTL 缓存文件句柄。批量发送遇错即停止，返回已成功项与失败位置，避免整批重发。
 
 出站语音通过 FFmpeg 转为 24 kHz 单声道 PCM，再编码为 Tencent SILK；入站 SILK 和常见音频转为 WAV，最多十分钟。FFmpeg 缺失或格式损坏会明确报错。音频 URL 下载校验公网地址并固定 DNS 解析，每次重定向重新检查；解码器禁用嵌套文件和网络协议。扩展不内置语音识别，Core 决定当前模型能否读取音频。互动确认仍需明确调用工具，并满足 QQ 的确认时限。
 
-`qqofficial_send_media` 的本地路径选项可读取宿主进程有权访问、符合媒体大小限制的任意普通文件，并发送到 QQ；没有目录白名单或逐文件确认弹窗。因此按 Cortico 规范声明 `unsafe` 标签，并为 FFmpeg 声明 `external-setup` 标签。
+从 **0.2.3** 起，`qqofficial_send_media` 只接收公开 HTTP(S) URL 或 Core 管理的已有 `log:` / `mem:` 附件，不再打开模型指定的文件系统路径。旧的 `path` 参数、`file:` URL、伪装成附件句柄的路径穿越会被拒绝，批量发送同样受限。`fileName` 仅作为显示名称。FFmpeg 仅通过标准输入接收音频字节，并只启用 `pipe` 协议；模型不能指定命令或转码参数。FFmpeg 仍声明 `external-setup` 标签。
+
+发送本地图片、音频、视频或文档时，请先通过宿主的附件流程上传，或使用宿主工具生成的附件，再把返回的 `log:` / `mem:` 句柄传给 `blob`，原文件名传给 `fileName`，并指定 `fileType`（1 图片、2 视频、3 语音、4 文件）。语音转码、频道图片上传、分块上传和批量发送均保留。原先使用 `path` 的脚本需要改用 `blob` 或公开 `url`，扩展不提供开启任意文件读取的选项。
+
+新版包不再声明 `unsafe`。Cortico 会保留旧版本曾声明的警告标签，直到官方维护者批准撤销，因此审核期间仍可能显示旧警告。
 
 ## 配置
 

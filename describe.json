@@ -80,7 +80,7 @@
     },
     {
       "name": "qqofficial_send_media",
-      "description": "发送媒体；url、log:/mem: blob、授权的本地绝对 path 三选一，或 items 批量发送至多 8 项。fileType: 1 图片、2 视频、3 语音、4 文件。语音自动转码。部分失败不会重发已成功项。",
+      "description": "发送媒体；公开 url 与宿主管理的 log:/mem: blob 二选一，items 可批量发送至多 8 项。不接受本地 path。fileType: 1 图片、2 视频、3 语音、4 文件。语音自动转码。部分失败不会重发已成功项。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -111,9 +111,6 @@
             "type": "string"
           },
           "blob": {
-            "type": "string"
-          },
-          "path": {
             "type": "string"
           },
           "fileType": {
@@ -157,9 +154,6 @@
                   "type": "string"
                 },
                 "blob": {
-                  "type": "string"
-                },
-                "path": {
                   "type": "string"
                 },
                 "fileType": {

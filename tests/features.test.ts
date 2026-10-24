@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTimeout as delay } from 'node:timers/promises';
+import { writeFile, symlink } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { OutputTap, ToolOutcome } from 'cortico/core/types.ts';
+import { LogBlobStore } from 'cortico/core/blobs.ts';
 import { QQOfficialWorld } from '../src/world.ts';
 import { QQOFFICIAL_DEFAULTS, QQOFFICIAL_SECRET } from '../src/config.ts';
 import { audioToSilk, isSilk, pcmToWav } from '../src/audio.ts';
@@ -147,6 +150,77 @@ describe('bounded downgrade and failure outcomes', () => {
 });
 
 describe('media and auxiliary tools', () => {
+  it('rejects existing local files and symlinks, including a path mixed with a valid blob', async () => {
+    const local = join(host.dataDir, 'private.txt');
+    const link = join(host.dataDir, 'alias.txt');
+    await writeFile(local, 'private data must not be sent');
+    await symlink(local, link);
+    host.blobs.set('mem:allowed', { bytes: Buffer.from('shared attachment'), mime: 'text/plain' });
+    const lookup = vi.spyOn(host, 'blob');
+    for (const path of [local, link, '../private.txt', 'file://' + local, 'C:\\private\\file.txt']) {
+      const result = await tool('send_media', { target: destination, fileType: 4, path, blob: 'mem:allowed' }) as ToolOutcome;
+      expect(result.failed).toBe(true);
+      expect(result.text).toContain('Direct local paths');
+    }
+    expect(await tool('send_media', { target: destination, fileType: 4, path: local })).toMatchObject({ failed: true });
+    expect(lookup).not.toHaveBeenCalled();
+    expect(uploads).toHaveLength(0);
+    expect(requests).toHaveLength(0);
+  });
+
+  it.each([
+    '/etc/passwd', 'file:///etc/passwd', 'log:/etc/passwd', 'log:../private', 'log:abc/../../private',
+    'mem:/etc/passwd', 'mem:../private', 'mem:folder/../../private', 'mem:folder\\..\\private',
+    'mem:%2e%2e%2fprivate', 'mem:folder/%252e%252e/private', 'mem:C:/private', 'mem:bad\0name', 'mem:',
+  ])('rejects a forged attachment handle before invoking the host: %s', async blob => {
+    const lookup = vi.spyOn(host, 'blob');
+    expect(await tool('send_media', { target: destination, fileType: 4, blob })).toMatchObject({ failed: true });
+    expect(lookup).not.toHaveBeenCalled();
+    expect(uploads).toHaveLength(0);
+    expect(requests).toHaveLength(0);
+  });
+
+  it('validates every batch source before uploading any item', async () => {
+    host.blobs.set('mem:allowed', { bytes: Buffer.from('shared'), mime: 'text/plain' });
+    for (const bad of [{ path: '/private.txt' }, { blob: 'mem:../private' }, { url: 'file:///private.txt' }]) {
+      expect(await tool('send_media', { target: destination, items: [
+        { fileType: 4, blob: 'mem:allowed' }, { fileType: 4, ...bad },
+      ] })).toMatchObject({ failed: true });
+    }
+    expect(uploads).toHaveLength(0);
+    expect(requests).toHaveLength(0);
+  });
+
+  it('never falls back from a missing or oversized host attachment to a filesystem read', async () => {
+    host.blobs.set('mem:empty', { bytes: new Uint8Array(), mime: 'text/plain' });
+    host.blobs.set('mem:large', { bytes: new Uint8Array(9), mime: 'text/plain' });
+    ctx.value.cfg.maxMediaBytes = 8;
+    for (const blob of ['mem:missing', 'log:12345678.txt', 'mem:empty', 'mem:large']) {
+      expect(await tool('send_media', { target: destination, fileType: 4, blob })).toMatchObject({ failed: true });
+    }
+    expect(uploads).toHaveLength(0);
+    expect(requests).toHaveLength(0);
+  });
+
+  it.each([
+    { fileType: 1, mime: 'image/png', name: 'picture.png' },
+    { fileType: 2, mime: 'video/mp4', name: 'clip.mp4' },
+    { fileType: 4, mime: 'application/pdf', name: 'report.pdf' },
+  ])('sends both log and memory attachments for fileType $fileType', async ({ fileType, mime, name }) => {
+    const store = new LogBlobStore(host.dataDir);
+    const bytes = Buffer.from('operator-shared ' + name);
+    const log = store.put(bytes, mime);
+    host.blobs.set('mem:generated/' + name, { bytes, mime });
+    vi.spyOn(host, 'blob').mockImplementation(handle => handle.startsWith('log:') ? store.read(handle) : host.blobs.get(handle) ?? null);
+    for (const [index, blob] of [log, 'mem:generated/' + name].entries()) {
+      // The filename is display metadata and must never cause a local file read.
+      const target = { kind: 'c2c', id: 'user-' + index };
+      expect(typeof await tool('send_media', { target, fileType, blob, fileName: '/display/only/' + name })).toBe('string');
+      expect(uploads[index]).toMatchObject({ file_type: fileType, file_name: name, file_data: bytes.toString('base64') });
+    }
+    expect(requests).toHaveLength(2);
+  });
+
   it('uploads a Core image blob as multipart in a guild channel', async () => {
     host.blobs.set('mem:picture', { bytes: Buffer.from('image-bytes'), mime: 'image/png' });
     expect(typeof await tool('send_media', { target: { kind: 'channel', id: 'chan' }, fileType: 1, blob: 'mem:picture', replyTo: 'in' })).toBe('string');

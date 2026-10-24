@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { audioToSilk, audioToWav, isSilk, pcmToWav } from '../src/audio.ts';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 function tone(): Uint8Array {
   const pcm = Buffer.alloc(24000 * 2 / 5);
@@ -27,5 +30,17 @@ describe('real audio conversion', () => {
   it('honors cancellation before starting a conversion', async () => {
     const controller = new AbortController(); controller.abort();
     await expect(audioToSilk(tone(), { ...options(), signal: controller.signal })).rejects.toThrow();
+  });
+
+  it('refuses audio playlists that try to load a local file or network resource', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'qq-audio-boundary-'));
+    try {
+      const file = join(dir, 'private.wav');
+      await writeFile(file, tone());
+      for (const source of [file, 'file:' + file, 'http://127.0.0.1/private.wav']) {
+        const playlist = Buffer.from('ffconcat version 1.0\nfile ' + source + '\n');
+        await expect(audioToSilk(playlist, options())).rejects.toThrow('decode');
+      }
+    } finally { await rm(dir, { recursive: true, force: true }); }
   });
 });

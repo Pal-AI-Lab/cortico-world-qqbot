@@ -17,7 +17,7 @@ import { qqOfficialText } from './strings.ts';
 import { qqOfficialTools, type QQOfficialAction } from './tools.ts';
 import { QQOfficialWebhook } from './webhook.ts';
 import { audioToSilk, audioToWav, isAudio, isSilk } from './audio.ts';
-import { localMedia, publicMedia } from './media-source.ts';
+import { mediaBlobHandle, publicMedia } from './media-source.ts';
 import { QQUploader, MEDIA_LIMITS } from './upload.ts';
 import { QQSessionState } from './session-state.ts';
 import { sendWithFallback, waitUntil } from './delivery.ts';
@@ -321,11 +321,9 @@ export class QQOfficialWorld implements World {
       const limit = Math.min(this.cfg.maxMediaBytes, MEDIA_LIMITS[fileType]);
       let bytes: Uint8Array | undefined;
       let url = args.url === undefined ? undefined : remoteUrl(args.url);
-      let name = basename(args.fileName !== undefined ? string(args.fileName, 'fileName') : args.path !== undefined ? string(args.path, 'path') : fileType === 1 ? 'image.png' : fileType === 3 ? 'voice.silk' : 'attachment');
-      if (args.path !== undefined) bytes = await localMedia(string(args.path, 'path'), limit, combined);
+      let name = basename(args.fileName !== undefined ? string(args.fileName, 'fileName') : fileType === 1 ? 'image.png' : fileType === 3 ? 'voice.silk' : 'attachment');
       if (args.blob !== undefined) {
-        const handle = string(args.blob, 'blob');
-        if (!/^(log|mem):/.test(handle)) throw new Error('Expected a log:/mem: blob handle');
+        const handle = mediaBlobHandle(args.blob);
         bytes = this.host.blob(handle)?.bytes;
         if (!bytes) throw new Error('Blob not found');
       }
@@ -434,8 +432,11 @@ export class QQOfficialWorld implements World {
   }
 
   private validateMedia(args: JsonObject): number {
+    if ('path' in args) throw new Error('Direct local paths are no longer supported; attach the file through the host and use its log:/mem: blob handle');
     const type = integer(args.fileType, 'fileType', 1, 4);
-    if (['url', 'blob', 'path'].filter(k => args[k] !== undefined).length !== 1) throw new Error('Supply exactly one of url, blob or path');
+    if (['url', 'blob'].filter(k => args[k] !== undefined).length !== 1) throw new Error('Supply exactly one of url or blob');
+    if (args.blob !== undefined) mediaBlobHandle(args.blob);
+    if (args.url !== undefined) remoteUrl(args.url);
     return type;
   }
 

@@ -1,7 +1,7 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/icon.png" alt="QQ Official World" width="88" height="88">
+  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/icon.png" alt="QQ Official World" width="88" height="88">
 </p>
 
 # QQ Official World
@@ -23,21 +23,21 @@ By [leafliber](https://github.com/leafliber) · [npm](https://www.npmjs.com/pack
 
 The screenshots render the actual extension panels with Cortico UI components and sample data. They contain no live QR authorization, bot credentials or private conversations.
 
-![QQ connection panel](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connection-zh.png)
+![QQ connection panel](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/connection-zh.png)
 
-![Connection success panel with the QR code removed](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/connected-zh.png)
+![Connection success panel with the QR code removed](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/connected-zh.png)
 
-![Credentials and connection settings](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.2/assets/screenshots/configuration-zh.png)
+![Credentials and connection settings](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/configuration-zh.png)
 
 ## Install
 
 Requires Node.js 22 or later. Install FFmpeg for common audio transcoding and audio tests, or configure `ffmpegPath`. The SILK codec is installed as an npm dependency. The main package targets **Cortico World API 6** and is developed against the `cortico@0.2.6` SDK.
 
-In Cortico or Coopanion's extension page, select **World** and install `cortico-world-qq-official@0.2.2` from npm. Restart Core to load it. From an existing Cortico installation, the equivalent command is:
+In Cortico or Coopanion's extension page, select **World** and install `cortico-world-qq-official@0.2.3` from npm. Restart Core to load it. From an existing Cortico installation, the equivalent command is:
 
 ```sh
 cd extensions
-corepack pnpm add cortico-world-qq-official@0.2.2
+corepack pnpm add cortico-world-qq-official@0.2.3
 ```
 
 From a checkout:
@@ -94,7 +94,7 @@ Outgoing sequence reservations (`qqofficial.attempt`) and platform receipts (`qq
 | Tool | Contract |
 | --- | --- |
 | `qqofficial_send_message` | Text or Markdown, optional message reference and native keyboard object. |
-| `qqofficial_send_media` | Exactly one public URL, `log:`/`mem:` blob or absolute local path; types 1 image, 2 video, 3 voice, 4 file. `items` sends up to eight sequentially. |
+| `qqofficial_send_media` | Exactly one public URL or host-managed `log:`/`mem:` attachment; local paths are rejected; types 1 image, 2 video, 3 voice, 4 file. `items` sends up to eight sequentially. |
 | `qqofficial_stream_message` | `followModel=true` forwards the next model round’s public reply to a selected target; also supports manual C2C parts. |
 | `qqofficial_delete_message` | Recall a bot message in the given target. |
 | `qqofficial_list_targets` | Known targets, recent reply anchors and proactive reception state for this AppID. |
@@ -110,11 +110,15 @@ Scheduled notifications use the host’s existing `alarm_set`, `alarm_list` and 
 
 Attachment reads accept HTTPS URLs on `qq.com`, `qq.com.cn`, `qpic.cn`, `ugcimg.cn` and their subdomains, checking every redirect and omitting bot authentication headers. Core decides whether the current model supports the returned MIME type. URLs and metadata alone are not treated as image or audio perception.
 
-Channels and guild DMs support text, Markdown, remote images and multipart local images. C2C and groups support images, voice, video and files. The default media read limit is 100 MiB; outgoing limits are additionally 30 MiB for images, 20 MiB for voice and 100 MiB for video/files. QQ may impose tighter limits. Files of 5 MiB or more use chunked uploads with plan validation, per-part confirmation and final merge. Uploaded handles are cached according to QQ’s TTL. Media batches stop on failure and return accepted items plus the failing index, without replaying the batch.
+Channels and guild DMs support text, Markdown, remote images and multipart host attachments. C2C and groups support images, voice, video and files. The default media read limit is 100 MiB; outgoing limits are additionally 30 MiB for images, 20 MiB for voice and 100 MiB for video/files. QQ may impose tighter limits. Files of 5 MiB or more use chunked uploads with plan validation, per-part confirmation and final merge. Uploaded handles are cached according to QQ’s TTL. Media batches stop on failure and return accepted items plus the failing index, without replaying the batch.
 
 Outgoing voice is decoded by FFmpeg to 24 kHz mono PCM and encoded as Tencent SILK. Incoming SILK and common audio become WAV, bounded to ten minutes. Missing FFmpeg or malformed audio produces an explicit error. Audio URL downloads validate public addresses and pin DNS at every redirect; decoding disables nested file/network protocols. Speech recognition is left to an audio-capable model through Core. Interaction acknowledgements require an explicit tool call within QQ’s deadline.
 
-The local-path option in `qqofficial_send_media` can read any regular file accessible to the host process, subject to the media size limits, and send it to QQ. It has no directory allowlist or per-file approval prompt. The package declares Cortico's `unsafe` tag for this capability and `external-setup` for FFmpeg.
+From **0.2.3**, `qqofficial_send_media` accepts only public HTTP(S) URLs or existing attachments resolved through Core’s `log:` / `mem:` store. It does not open model-supplied filesystem paths. Legacy `path` arguments, `file:` URLs and path traversal disguised as attachment handles are rejected, including in batches. `fileName` is display metadata only. FFmpeg receives audio bytes through stdin with only the `pipe` protocol enabled; the model cannot supply commands or conversion options. The `external-setup` tag remains for FFmpeg.
+
+To send a local image, audio clip, video or document, first upload it through the host’s attachment flow or use an attachment produced by a host tool. Pass the returned `log:` / `mem:` handle as `blob`, the original filename as `fileName`, and the corresponding `fileType` (1 image, 2 video, 3 voice, 4 file). Audio conversion, channel image uploads, chunking and batch sending remain available. Existing scripts using `path` must migrate to `blob` or a public `url`. No general filesystem permission can be enabled in this extension.
+
+The current package no longer declares `unsafe`. Cortico retains warning tags from older releases until its maintainers approve removal, so an older market warning can remain during review.
 
 ## Configuration
 

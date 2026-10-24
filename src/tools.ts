@@ -9,7 +9,7 @@ const text = { type: 'string' };
 const anchors = { replyTo: text, eventId: text, delivery: { type: 'string', enum: ['auto', 'reply', 'proactive', 'wakeup'] }, fallback: { type: 'boolean' } };
 const format = { type: 'string', enum: ['text', 'markdown'] };
 export type QQOfficialAction = 'send' | 'media' | 'stream' | 'remove' | 'history' | 'interaction' | 'read' | 'targets';
-const media = { url: text, blob: text, path: text, fileType: { type: 'integer', minimum: 1, maximum: 4 }, fileName: text, content: text };
+const media = { url: text, blob: text, fileType: { type: 'integer', minimum: 1, maximum: 4 }, fileName: text, content: text };
 
 export function qqOfficialTools(language: ModelLanguage, execute: (action: QQOfficialAction, args: Record<string, unknown>, signal?: AbortSignal) => Promise<string | ToolOutcome>): ToolDef[] {
   const t = QQOFFICIAL_MODEL_TEXT[language];
