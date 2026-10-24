@@ -1,11 +1,13 @@
 import { createDecipheriv, randomBytes } from 'node:crypto';
+import QRCode from 'qrcode';
 import { object, string } from './protocol.ts';
 
 export type QQOfficialBindingResult = { kind: 'pending' | 'expired' } | { kind: 'bound'; appId: string; secret: string };
+export type QQOfficialBindingTask = { url: string; qrDataUrl: string; expiresAtMs: number };
 
 /** The binding key stays on the server; only the connection URL goes to the console. */
 export class QQOfficialBinding {
-  private task: { id: string; key: Buffer; createdAtMs: number } | null = null;
+  private task: { id: string; key: Buffer; display: QQOfficialBindingTask } | null = null;
   constructor(private readonly timeoutMs: number, private readonly baseUrl = 'https://q.qq.com') {}
 
   private async request(path: string, payload: unknown) {
@@ -19,19 +21,32 @@ export class QQOfficialBinding {
     return object(result.data);
   }
 
-  async start(): Promise<{ url: string }> {
+  private activeTask() {
+    if (this.task && Date.now() >= this.task.display.expiresAtMs) this.task = null;
+    return this.task;
+  }
+
+  current(): QQOfficialBindingTask | null {
+    const task = this.activeTask();
+    return task ? { ...task.display } : null;
+  }
+
+  async start(): Promise<QQOfficialBindingTask> {
     const key = randomBytes(32);
     const data = await this.request('/lite/create_bind_task', { key: key.toString('base64') });
     const id = string(data.task_id, 'task_id');
-    this.task = { id, key, createdAtMs: Date.now() };
-    return { url: `${this.baseUrl}/qqbot/openclaw/connect.html?task_id=${encodeURIComponent(id)}&_wv=2` };
+    const expiresAtMs = Date.now() + 10 * 60 * 1000;
+    const url = `${this.baseUrl}/qqbot/openclaw/connect.html?task_id=${encodeURIComponent(id)}&_wv=2`;
+    const qrDataUrl = await QRCode.toDataURL(url, { errorCorrectionLevel: 'M', margin: 4, width: 280 });
+    this.task = { id, key, display: { url, qrDataUrl, expiresAtMs } };
+    return this.current()!;
   }
 
   async poll(): Promise<QQOfficialBindingResult> {
-    const task = this.task;
-    if (!task || Date.now() - task.createdAtMs > 10 * 60 * 1000) { this.task = null; return { kind: 'expired' }; }
+    const task = this.activeTask();
+    if (!task) return { kind: 'expired' };
     const data = await this.request('/lite/poll_bind_result', { task_id: task.id });
-    if (this.task !== task) return { kind: 'expired' };
+    if (this.activeTask() !== task) return { kind: 'expired' };
     const status = Number(data.status);
     if (status === 3) { this.task = null; return { kind: 'expired' }; }
     if (status !== 2) return { kind: 'pending' };

@@ -1,6 +1,6 @@
 /** Attachments are fetched only from platform CDN hosts, without bot credentials. Redirects are checked again. */
 export async function readAttachment(url: string, options: { maxBytes: number; timeoutMs: number; signal: AbortSignal; testOrigin?: string }) {
-  let current = new URL(url.startsWith('//') ? `https:${url}` : url);
+  let current = new URL(url.startsWith('//') ? `https:${url}` : /^[\w.-]+\.[a-z]+\//i.test(url) ? `https://${url}` : url);
   const signal = AbortSignal.any([options.signal, AbortSignal.timeout(options.timeoutMs)]);
   for (let redirects = 0; redirects <= 3; redirects++) {
     if (current.protocol !== 'https:' || current.username || current.password || (current.port && current.port !== '443')

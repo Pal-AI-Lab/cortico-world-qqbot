@@ -1,12 +1,20 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { readAttachment } from '../src/media.ts';
 import { httpServer } from './helpers.ts';
+import { publicAddress, publicMedia, localMedia } from '../src/media-source.ts';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 let server: Awaited<ReturnType<typeof httpServer>> | undefined;
 afterEach(async () => { await server?.close(); server = undefined; });
 const options = () => ({ maxBytes: 8, timeoutMs: 1000, signal: new AbortController().signal, testOrigin: server?.url });
 
 describe('attachment transport', () => {
+  it('normalizes scheme-less QQ attachment URLs', async () => {
+    server = await httpServer((_req, res) => { res.writeHead(200, { 'Content-Type': 'image/png' }); res.end('image'); });
+    expect((await readAttachment('qpic.cn/image', options())).bytes.toString()).toBe('image');
+  });
   it('rejects private, credential-bearing and deceptive hosts before making a request', async () => {
     const urls = ['http://qpic.cn/a', 'https://127.0.0.1/a', 'https://qpic.cn.example.invalid/a', 'https://user:password@qpic.cn/a', 'https://qpic.cn:8080/a'];
     for (const url of urls) await expect(readAttachment(url, options())).rejects.toThrow('outside');
@@ -29,5 +37,25 @@ describe('attachment transport', () => {
     });
     for (const path of ['/declared', '/chunked']) await expect(readAttachment(`https://qpic.cn${path}`, options())).rejects.toThrow('maxMediaBytes');
     await expect(readAttachment('https://qpic.cn/loop', options())).rejects.toThrow('Too many');
+  });
+});
+
+describe('local and public media sources', () => {
+  it('rejects local, mapped, link-local and private addresses before download', async () => {
+    for (const ip of ['127.0.0.1', '10.1.1.1', '169.254.169.254', '172.16.1.1', '192.168.1.1', '::1', '::ffff:127.0.0.1', 'fd00::1', 'fe80::1']) expect(publicAddress(ip)).toBe(false);
+    expect(publicAddress('8.8.8.8')).toBe(true);
+    expect(publicAddress('2606:4700:4700::1111')).toBe(true);
+    await expect(publicMedia('http://127.0.0.1/secret', 100, 1000, new AbortController().signal)).rejects.toThrow('non-public');
+  });
+  it('reads bounded local files and rejects directories, relative paths and oversized files', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'qq-media-'));
+    try {
+      const file = join(dir, 'file'); await writeFile(file, '123456789');
+      const signal = new AbortController().signal;
+      expect(Buffer.from(await localMedia(file, 9, signal)).toString()).toBe('123456789');
+      await expect(localMedia(file, 8, signal)).rejects.toThrow('maxMediaBytes');
+      await expect(localMedia(dir, 9, signal)).rejects.toThrow('regular');
+      await expect(localMedia('relative', 9, signal)).rejects.toThrow('absolute');
+    } finally { await rm(dir, { recursive: true, force: true }); }
   });
 });

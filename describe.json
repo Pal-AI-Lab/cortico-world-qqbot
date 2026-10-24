@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "qqofficial_send_message",
-      "description": "向指定 QQ Official 会话发送文本或 Markdown。replyTo 与 eventId 互斥；省略二者为主动消息。",
+      "description": "发送文本或 Markdown。replyTo/eventId 互斥；delivery 支持 auto、reply、proactive、wakeup。不传依据和 delivery 时主动发送；fallback=false 禁用格式或回复方式降级。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -45,6 +45,18 @@
           "eventId": {
             "type": "string"
           },
+          "delivery": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "reply",
+              "proactive",
+              "wakeup"
+            ]
+          },
+          "fallback": {
+            "type": "boolean"
+          },
           "referenceId": {
             "type": "string"
           },
@@ -68,7 +80,7 @@
     },
     {
       "name": "qqofficial_send_media",
-      "description": "向 QQ Official 发送一个媒体附件。url 与 blob 仅填一个；blob 是 log:/mem: 句柄。fileType: 1 图片、2 视频、3 语音、4 文件。",
+      "description": "发送媒体；url、log:/mem: blob、授权的本地绝对 path 三选一，或 items 批量发送至多 8 项。fileType: 1 图片、2 视频、3 语音、4 文件。语音自动转码。部分失败不会重发已成功项。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -101,6 +113,9 @@
           "blob": {
             "type": "string"
           },
+          "path": {
+            "type": "string"
+          },
           "fileType": {
             "type": "integer",
             "minimum": 1,
@@ -117,11 +132,56 @@
           },
           "eventId": {
             "type": "string"
+          },
+          "delivery": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "reply",
+              "proactive",
+              "wakeup"
+            ]
+          },
+          "fallback": {
+            "type": "boolean"
+          },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 8,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "blob": {
+                  "type": "string"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "fileType": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 4
+                },
+                "fileName": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "fileType"
+              ]
+            }
           }
         },
         "required": [
-          "target",
-          "fileType"
+          "target"
         ],
         "additionalProperties": false
       },
@@ -135,7 +195,7 @@
     },
     {
       "name": "qqofficial_stream_message",
-      "description": "向 C2C 发送一个文本或 Markdown 流式分片。省略 streamId 开始新消息；续片使用返回的 streamId。finish 默认为 true。",
+      "description": "followModel=true 将下一轮公开正文自动发给指定 QQ target；调用后直接输出正文。带回复依据的 C2C 流式，主动通知和其他会话缓冲后发送。手动模式传 content，续片传 streamId，finish 默认 true。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -178,16 +238,30 @@
           "eventId": {
             "type": "string"
           },
+          "delivery": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "reply",
+              "proactive",
+              "wakeup"
+            ]
+          },
+          "fallback": {
+            "type": "boolean"
+          },
           "streamId": {
             "type": "string"
           },
           "finish": {
             "type": "boolean"
+          },
+          "followModel": {
+            "type": "boolean"
           }
         },
         "required": [
-          "target",
-          "content"
+          "target"
         ],
         "additionalProperties": false
       },
@@ -195,8 +269,8 @@
         "speak"
       ],
       "summary": {
-        "zh": "向 QQ 单聊发送流式消息分片。",
-        "en": "Sends streaming message parts to a QQ direct chat."
+        "zh": "发送流式分片或自动转发下一轮回复正文。",
+        "en": "Sends stream parts or forwards the next public reply."
       }
     },
     {
@@ -298,7 +372,7 @@
     },
     {
       "name": "qqofficial_read_attachment",
-      "description": "读取已保存的 QQ Official 消息附件。cursor 来自事件历史，index 是 data.attachments 中从 0 开始的序号；只读取 QQ CDN 地址。",
+      "description": "读取已保存的 QQ 附件；cursor 来自历史，index 是 attachments 中从 0 开始的序号。可用 quotedIndex 选择 data.msg_elements 中的引用消息。只读取 QQ CDN，语音转为 WAV。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -309,6 +383,11 @@
           "index": {
             "type": "integer",
             "minimum": 0
+          },
+          "quotedIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
           }
         },
         "required": [
@@ -323,6 +402,29 @@
       "summary": {
         "zh": "读取已保存消息的 QQ CDN 附件。",
         "en": "Reads QQ CDN attachments from stored messages."
+      }
+    },
+    {
+      "name": "qqofficial_list_targets",
+      "description": "列出本账号已知 QQ 会话目标、最近消息和主动接收状态。定时通知须保存准确 target，并在唤醒后以 delivery=proactive 发送。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "tags": [
+        "read"
+      ],
+      "summary": {
+        "zh": "查询已知 QQ 会话及主动接收状态。",
+        "en": "Lists known QQ targets and proactive reception state."
       }
     },
     {

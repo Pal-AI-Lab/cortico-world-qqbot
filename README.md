@@ -10,7 +10,7 @@ The World uses ID `qqofficial`. It can coexist with `cortico-world-qq`, which us
 
 ## Install
 
-Requires Node.js 22 or later. The main package targets **Cortico World API 6** and is developed against the `cortico@0.2.6` SDK.
+Requires Node.js 22 or later. Install FFmpeg for common audio transcoding and audio tests, or configure `ffmpegPath`. The SILK codec is installed as an npm dependency. The main package targets **Cortico World API 6** and is developed against the `cortico@0.2.6` SDK.
 
 From a checkout:
 
@@ -28,15 +28,17 @@ For a host that still uses **World API 5**, including Coopanion pinned to Cortic
 pnpm pack:api5
 ```
 
-Select the generated `dist/api5` directory in the extension page. The command also produces `dist/cortico-world-qq-official-0.1.0-api5.tgz`. This fallback changes the entry point, manifest contract and WebUI method name; it uses the same transport and tool implementation. Regenerate it after source changes.
+Select the generated `dist/api5` directory in the extension page. The command also produces a `.tgz` in `dist/`, with a client-content hash in its API 5 version so the host reloads updated UI assets. This fallback changes the entry point, manifest contract and WebUI method name; it uses the same transport and tool implementation. Regenerate it after source changes.
 
 ## Connect
 
-Open the QQ Official World page. Either enter AppID and AppSecret and save, or choose **Get binding link**, open QQ's binding page, complete the binding, and choose **Check binding result**. The task expires after ten minutes. The binding key and decrypted secret stay on the Core side; only the task link and completion status reach the browser.
+Open the QQ Official World’s **Connection** tab and generate a QR code. Scan it with QQ on your phone, then create or select a bot and authorize it on QQ's official page. The extension generates the QR code locally, checks the result automatically, saves the credentials, and enables or reconnects the World. The QR code disappears once credentials are received; connection success is shown only after the message transport is ready. A failed connection keeps the credentials and offers a retry. Reloading the panel resumes the current task while Core is running; tasks expire after ten minutes.
+
+AppID, AppSecret and transport options are managed together in **Configuration**. AppSecret is never returned to the browser; only its configured status is displayed. Manual credentials remain available there. The binding key and decrypted secret stay on the Core side.
 
 The binding link uses QQ's `/qqbot/openclaw/connect.html` page. This package is a Cortico extension independent of OpenClaw: it reuses QQ's public binding and bot APIs, with no OpenClaw dependency or integration. Binding obtains the bot's AppID and AppSecret; subsequent messaging goes directly to QQ. It does not connect to or control an OpenClaw instance.
 
-The AppID is stored in `worlds.qqofficial.appId`. The secret is stored through `WorldContext.storeSecret` as `CORTICO_QQOFFICIAL_APP_SECRET` in the deployment environment. A blank secret keeps the existing secret only when the AppID is unchanged. Enable or restart the World after saving credentials.
+The AppID is stored in `worlds.qqofficial.appId`. The secret is stored through `WorldContext.storeSecret` as `CORTICO_QQOFFICIAL_APP_SECRET` in the deployment environment. A blank secret keeps the existing secret only when the AppID is unchanged. Saving configuration applies changes to an enabled World. For a disabled World with manually entered credentials, use **Connect QQ** on the Connection tab.
 
 The default transport is `websocket`, with Intents `33554432` for QQ group and C2C events. Set the Intents required by your bot's granted event subscriptions. QQ's permissions and quotas still apply to proactive messages, Markdown, keyboards, media and recalls.
 
@@ -57,25 +59,32 @@ Each message carries a routing `target`:
 
 Message IDs are deduplicated per platform event type and target; notices use their event ID when present. The in-memory cache keeps 10,000 identities and is restored from the most recent 10,000 stored World events. WebSocket reconnects resume from the last persisted sequence during the running World instance. A process restart creates a new gateway session.
 
-Outgoing sequence reservations (`qqofficial.attempt`) and platform receipts (`qqofficial.sent`, `qqofficial.removed`, `qqofficial.acknowledged`) are archived with `deliver: false`. Sending therefore does not wake the Persona again. Sent records include the request and platform response; API acceptance does not prove recipient read status. Only an explicit HTTP 401 triggers one authentication retry. Timeouts and other failed sends are not automatically repeated.
+Outgoing sequence reservations (`qqofficial.attempt`) and platform receipts (`qqofficial.sent`, `qqofficial.removed`, `qqofficial.acknowledged`) are archived with `deliver: false`. Sending therefore does not wake the Persona again. Sent records include the request and platform response; API acceptance does not prove recipient read status. HTTP 401 triggers one authentication retry. Explicit rate limits allow at most two retries, each waiting no more than five seconds. Configured downgrades handle only explicit rejections: expired reply anchors can become proactive sends, and denied Markdown can become text. Content moderation, permissions and quotas are not bypassed. Timeouts, HTTP 5xx or missing message IDs leave delivery unknown and never trigger an automatic resend.
 
 ## Tools
 
 | Tool | Contract |
 | --- | --- |
 | `qqofficial_send_message` | Text or Markdown, optional message reference and native keyboard object. |
-| `qqofficial_send_media` | Public URL or existing `log:`/`mem:` blob; file types 1 image, 2 video, 3 voice, 4 file. |
-| `qqofficial_stream_message` | Explicit C2C append-mode parts. Reuse returned `streamId`; `finish` defaults to true. |
+| `qqofficial_send_media` | Exactly one public URL, `log:`/`mem:` blob or absolute local path; types 1 image, 2 video, 3 voice, 4 file. `items` sends up to eight sequentially. |
+| `qqofficial_stream_message` | `followModel=true` forwards the next model round’s public reply to a selected target; also supports manual C2C parts. |
 | `qqofficial_delete_message` | Recall a bot message in the given target. |
+| `qqofficial_list_targets` | Known targets, recent reply anchors and proactive reception state for this AppID. |
 | `qqofficial_history` | Stored World history for this AppID, optionally filtered by target and cursor. |
-| `qqofficial_read_attachment` | Fetch a saved message attachment by event cursor and zero-based index, returning bytes to Core. |
+| `qqofficial_read_attachment` | Read by event cursor and attachment index; optional `quotedIndex` selects a quoted message. Voice becomes WAV for Core. |
 | `qqofficial_ack_interaction` | Explicit platform acknowledgement with a result code from 0 to 5. |
 
-Pass `replyTo` for a message reply or `eventId` for an event reply. They are mutually exclusive. With neither, the send is proactive. The World does not choose a recent message as an implicit reply anchor. Stream continuation retains its original target, format, reply anchor and message sequence.
+Pass `replyTo` or `eventId`, exclusively. `delivery` supports `reply`, `proactive`, `auto` and `wakeup`. `auto` chooses a recent anchor within a conservative age and sequence budget, then uses proactive delivery when none is available. `wakeup` requires C2C and platform permission. Omitting both anchors and `delivery` remains proactive. Known opt-outs or removed-bot relationships block proactive sends locally; passive replies remain possible. Target state and sequence reservations are restored from this account’s archive.
+
+Scheduled notifications use the host’s existing `alarm_set`, `alarm_list` and `alarm_cancel`. Preserve the exact target from `qqofficial_list_targets` in the reminder, then send with `delivery=proactive` when awakened. The extension adds no scheduler. The default proactive interval is three seconds; QQ permissions, quotas and recipient settings still apply.
+
+`followModel=true` explicitly selects a target and forwards only the next round’s public text, excluding reasoning and tool arguments. Anchored C2C replies stream at the configured interval; proactive notifications, groups, channels and guild DMs buffer into ordinary messages. Explicit streaming endpoint 404/405 responses also enable buffered delivery. Round end, another tool call, cancellation, conversation changes and idle timeouts close the reply. Manual C2C parts use `content`, reuse the returned `streamId`, and retain the target, format, anchor and sequence; `finish` defaults to true. Partial failures never replay the complete reply. Uncertain continuations remain blocked after process restart.
 
 Attachment reads accept HTTPS URLs on `qq.com`, `qq.com.cn`, `qpic.cn`, `ugcimg.cn` and their subdomains, checking every redirect and omitting bot authentication headers. Core decides whether the current model supports the returned MIME type. URLs and metadata alone are not treated as image or audio perception.
 
-Channels and guild DMs support text, Markdown and remote images. C2C and groups additionally support the platform's media upload interface. Local blob uploads and downloaded attachments default to a 10 MiB limit, configurable up to 20 MiB. This release does not implement chunked uploads, voice transcoding, speech recognition, or automatic forwarding of model output. Streaming sends contain only explicit tool arguments. Interaction acknowledgements also require an explicit tool call, so delivery must meet QQ's acknowledgement deadline.
+Channels and guild DMs support text, Markdown, remote images and multipart local images. C2C and groups support images, voice, video and files. The default media read limit is 100 MiB; outgoing limits are additionally 30 MiB for images, 20 MiB for voice and 100 MiB for video/files. QQ may impose tighter limits. Files of 5 MiB or more use chunked uploads with plan validation, per-part confirmation and final merge. Uploaded handles are cached according to QQ’s TTL. Media batches stop on failure and return accepted items plus the failing index, without replaying the batch.
+
+Outgoing voice is decoded by FFmpeg to 24 kHz mono PCM and encoded as Tencent SILK. Incoming SILK and common audio become WAV, bounded to ten minutes. Missing FFmpeg or malformed audio produces an explicit error. Audio URL downloads validate public addresses and pin DNS at every redirect; decoding disables nested file/network protocols. Speech recognition is left to an audio-capable model through Core. Interaction acknowledgements require an explicit tool call within QQ’s deadline.
 
 ## Configuration
 
@@ -92,7 +101,12 @@ All keys are under `worlds.qqofficial`. Defaults and validation are in [`src/con
 | `webhook.maxBodyBytes` | `1048576` | Callback size limit; requires restart. |
 | `timeoutMs` | `20000` | Network timeout; requires restart. |
 | `reconnectMs`, `maxReconnectMs` | `1000`, `30000` | Gateway reconnect backoff bounds; requires restart. |
-| `maxMediaBytes` | `10485760` | Blob upload and attachment download limit; takes effect immediately. |
+| `maxMediaBytes` | `104857600` | Media read limit, also capped by outgoing type limits; immediate. |
+| `autoFallback` | `true` | Downgrade explicit rejections; override per call with `fallback=false`. |
+| `proactiveIntervalMs` | `3000` | Minimum proactive send interval. |
+| `streamIntervalMs` | `500` | Minimum stream part interval. |
+| `streamIdleMs` | `15000` | Close streams after this idle period. |
+| `ffmpegPath` | `ffmpeg` | Audio converter executable. |
 | `modelLanguage` | `zh` | Model-facing Chinese or English; takes effect immediately. |
 
 The operator panel supports all eleven Cortico UI languages. Model instructions live in `src/model-text.ts`; UI copy lives in `src/strings.ts`.
@@ -101,7 +115,7 @@ The operator panel supports all eleven Cortico UI languages. Model instructions 
 
 `pnpm describe` regenerates `describe.json`. `pnpm check:extension` runs the SDK's manifest, construction and self-description validators without starting a connection. Optional built-ins missing from the published SDK's dependencies are excluded from tool-name collision checking, with a warning. The package metadata follows the [Cortico extension registry](https://github.com/Pal-AI-Lab/cortico-extensions); registration in that registry and publication to npm are separate operations.
 
-Tests use real local HTTP/WebSocket servers, Ed25519 and AES-GCM, the Cortico JSONL event store, and the SDK's browser UI primitives. They cover callback persistence, retries, restart deduplication, send sequences, streams, media boundaries, binding and panel disposal. No test contacts QQ or uses an operator deployment. This release is tagged `experimental` until checked with a real bot.
+Tests use real local HTTP/WebSocket servers, Ed25519 and AES-GCM, the Cortico JSONL event store, and the SDK's browser UI primitives. They cover persistence, reconnection, deduplication, proactive throttling and opt-outs, model reply streaming, downgrades, uncertain-delivery recovery, chunked transfers, real audio codecs, media boundaries, binding and panel disposal. Automated tests never contact QQ or use an operator deployment. Live service checks run separately. The `experimental` tag remains because permissions and media support require validation for each QQ application.
 
 Protocol references: [AstrBot QQ Official](https://github.com/AstrBotDevs/AstrBot/tree/master/astrbot/core/platform/sources/qqofficial), [AstrBot Webhook](https://github.com/AstrBotDevs/AstrBot/tree/master/astrbot/core/platform/sources/qqofficial_webhook), and [QQ's API documentation](https://bot.q.qq.com/wiki/develop/api-v2/). This package contains an independent TypeScript implementation; no AstrBot runtime is needed.
 

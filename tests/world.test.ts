@@ -153,6 +153,8 @@ describe('outbound actions', () => {
     const first = await tool('stream_message', { target: destination, content: 'first\n', format: 'markdown', replyTo: 'received', finish: false });
     expect(typeof first).toBe('string');
     const streamId = JSON.parse((first as string).split('\n').slice(1).join('\n')).streamId as string;
+    // Simulate a process interruption: graceful shutdown now closes published streams.
+    world['abort'].abort();
     await world.stop(); await start();
     await tool('stream_message', { target: destination, streamId, content: 'last\n' });
     expect(messages.map((m) => m.body)).toMatchObject([

@@ -27,6 +27,8 @@ export function normalize(event: QQOfficialDispatch): QQOfficialIncoming {
       target = { kind: 'dms', id: string(d.guild_id, 'guild_id') }; break;
   }
   const messageId = target ? string(d.id, 'message.id') : undefined;
+  if (!target && ['FRIEND_ADD', 'FRIEND_DEL', 'C2C_MSG_RECEIVE', 'C2C_MSG_REJECT'].includes(event.t) && typeof d.openid === 'string') target = { kind: 'c2c', id: d.openid };
+  if (!target && ['GROUP_ADD_ROBOT', 'GROUP_DEL_ROBOT', 'GROUP_MSG_RECEIVE', 'GROUP_MSG_REJECT'].includes(event.t) && typeof d.group_openid === 'string') target = { kind: 'group', id: d.group_openid };
   const key = messageId ? JSON.stringify([event.t, targetKey(target!), messageId]) : event.id ? JSON.stringify([event.t, event.id]) : undefined;
-  return { kind: target ? 'message' : 'notice', eventType: event.t, eventId: event.id, messageId, target, key, data: d };
+  return { kind: messageId ? 'message' : 'notice', eventType: event.t, eventId: event.id, messageId, target, key, data: d };
 }

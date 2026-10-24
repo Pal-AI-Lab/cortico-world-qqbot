@@ -1,0 +1,283 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { OutputTap, ToolOutcome } from 'cortico/core/types.ts';
+import { QQOfficialWorld } from '../src/world.ts';
+import { QQOFFICIAL_DEFAULTS, QQOFFICIAL_SECRET } from '../src/config.ts';
+import { audioToSilk, isSilk, pcmToWav } from '../src/audio.ts';
+import { TestHost, context, httpServer, json, readBody, SECRET, signedHeaders } from './helpers.ts';
+
+let host: TestHost;
+let world: QQOfficialWorld;
+let ctx: ReturnType<typeof context>;
+let api: Awaited<ReturnType<typeof httpServer>>;
+let mode = '';
+let incomingMedia: Uint8Array;
+const uploads: Record<string, unknown>[] = [];
+const requests: Array<{ path: string; body: Record<string, unknown>; at: number }> = [];
+async function start() {
+  world = new QQOfficialWorld({ context: ctx.value, endpoints: { apiUrl: api.url, tokenUrl: `${api.url}/token`, mediaOrigin: api.url } });
+  await world.start(host);
+}
+async function tool(name: string, args: Record<string, unknown>) {
+  return world.tools().find(t => t.name === `qqofficial_${name}`)!.handler(args, { role: 'test', log: host.log });
+}
+async function event(t: string, d: Record<string, unknown>) {
+  const body = JSON.stringify({ op: 0, t, d, id: `${t}-${Date.now()}-${Math.random()}` });
+  const response = await fetch(`http://${world.webUi().lamps![0].hint}`, { method: 'POST', body, headers: signedHeaders(body) });
+  expect(response.status).toBe(200);
+}
+function emit(value: Record<string, unknown>) { world.outputTap()!.onEvent(value as unknown as Parameters<OutputTap['onEvent']>[0]); }
+const destination = { kind: 'c2c', id: 'user' };
+
+beforeEach(async () => {
+  host = new TestHost(); requests.length = 0; uploads.length = 0; mode = ''; incomingMedia = new Uint8Array();
+  api = await httpServer(async (req, res) => {
+    if (req.url === '/token') { json(res, { access_token: 'token', expires_in: 7200 }); return; }
+    if (req.url === '/voice') { expect(req.headers.authorization).toBeUndefined(); res.setHeader('Content-Type', 'application/octet-stream'); res.end(incomingMedia); return; }
+    expect(req.headers.authorization).toBe('QQBot token');
+    let body: Record<string, unknown>;
+    if (String(req.headers['content-type']).startsWith('multipart/form-data')) {
+      const parts: Buffer[] = []; for await (const part of req) parts.push(part);
+      body = { multipart: Buffer.concat(parts).toString() };
+    } else body = await readBody(req);
+    if (req.url!.endsWith('/files')) { uploads.push(body); json(res, { file_info: 'media', ttl: 30 }); return; }
+    requests.push({ path: req.url!, body, at: Date.now() });
+    if (mode === 'no-stream' && req.url!.endsWith('/stream_messages')) { json(res, { code: 404 }, 404); return; }
+    if (mode === 'stream-rejected' && Number(body.index) > 0 && String(body.content_raw ?? '').trim()) { json(res, { code: 40034006 }, 403); return; }
+    if (body.content_type === 'markdown' && body.input_state === 10 && !String(body.content_raw).endsWith('\n')) { json(res, { code: 400, message: '流式消息md分片需要以换行结束' }, 400); return; }
+    if (mode === 'empty') { json(res, {}); return; }
+    if (mode === 'server-error' || (mode === 'stream-error' && Number(body.index) > 0)) { json(res, { code: 50001 }, 500); return; }
+    if (mode === 'rate') { res.setHeader('Retry-After', '0'); json(res, { code: 50002 }, 429); return; }
+    if (body.content === 'reject') { json(res, { code: 40034006 }, 403); return; }
+    if ((mode === 'anchor' || mode === 'both') && body.msg_id) { json(res, { code: 304103 }, 400); return; }
+    if ((mode === 'markdown' || mode === 'both') && (body.markdown || body.content_type === 'markdown')) { json(res, { code: 40034127 }, 403); return; }
+    json(res, { id: body.stream_msg_id ?? `sent-${requests.length}` });
+  });
+  ctx = context({ appId: 'app', transport: 'webhook', webhook: { ...QQOFFICIAL_DEFAULTS.webhook, port: 0 } });
+  ctx.secrets.set(QQOFFICIAL_SECRET, SECRET); await start();
+});
+afterEach(async () => { await world.stop(); await api.close(); host.close(); });
+
+describe('proactive delivery and known targets', () => {
+  it('discovers opt-out state, restores it after restart and separates accounts', async () => {
+    await event('C2C_MESSAGE_CREATE', { id: 'in', author: { user_openid: 'user', username: 'Alice' }, content: 'hello' });
+    await event('C2C_MSG_REJECT', { openid: 'user' });
+    expect(JSON.parse(await tool('list_targets', {}) as string)).toMatchObject([{ target: destination, label: 'Alice', proactive: 'blocked' }]);
+    await world.stop(); await start();
+    expect(await tool('send_message', { target: destination, content: 'hi', delivery: 'proactive' })).toMatchObject({ failed: true });
+    expect(requests).toHaveLength(0);
+    expect(typeof await tool('send_message', { target: destination, content: 'reply', delivery: 'reply' })).toBe('string');
+    expect(requests[0].body.msg_id).toBe('in');
+    await world.stop(); ctx.value.cfg.appId = 'other'; await start();
+    expect(JSON.parse(await tool('list_targets', {}) as string)).toEqual([]);
+  });
+
+  it('supports C2C/group proactive sends, wakeup and cached auto-reply budgets', async () => {
+    await event('C2C_MESSAGE_CREATE', { id: 'in', author: { user_openid: 'user' } });
+    for (let n = 0; n < 5; n++) await tool('send_message', { target: destination, content: 'auto', delivery: 'auto' });
+    expect(requests.slice(0, 4).map(r => r.body.msg_seq)).toEqual([1, 2, 3, 4]);
+    expect(requests[4].body.msg_id).toBeUndefined();
+    await tool('send_message', { target: { kind: 'group', id: 'group' }, content: 'active', delivery: 'proactive' });
+    expect(requests.at(-1)).toMatchObject({ path: '/v2/groups/group/messages', body: { content: 'active', msg_type: 0 } });
+    await tool('send_message', { target: destination, content: 'recall', delivery: 'wakeup' });
+    expect(requests.at(-1)!.body).toMatchObject({ is_wakeup: true });
+    expect(requests.at(-1)!.body.msg_id).toBeUndefined();
+    expect(await tool('send_message', { target: destination, content: 'bad', delivery: 'proactive', replyTo: 'in' })).toMatchObject({ failed: true });
+  });
+
+  it('serializes proactive sends with the configured interval', async () => {
+    ctx.value.cfg.proactiveIntervalMs = 40;
+    await Promise.all([1, 2].map(n => tool('send_message', { target: destination, content: String(n) })));
+    expect(requests[1].at - requests[0].at).toBeGreaterThanOrEqual(30);
+  });
+});
+
+describe('bounded downgrade and failure outcomes', () => {
+  it('falls back from an expired reply to proactive, then from rejected Markdown to text', async () => {
+    mode = 'both';
+    const result = await tool('send_message', { target: destination, content: '**hi**', format: 'markdown', replyTo: 'expired' });
+    expect(typeof result).toBe('string');
+    expect(requests).toHaveLength(3);
+    expect(requests[1].body.msg_id).toBeUndefined();
+    expect(requests[2].body).toMatchObject({ content: '**hi**', msg_type: 0 });
+    const sent = host.store.range({ source: 'qqofficial' }).filter(e => e.type === 'qqofficial.sent');
+    expect(sent).toHaveLength(1);
+    expect(sent[0].meta?.fallbacks).toEqual(['proactive', 'text']);
+  });
+
+  it.each(['server-error', 'empty'])('never resends when delivery is unknown: %s', async modeName => {
+    mode = modeName;
+    expect(await tool('send_message', { target: destination, content: 'hi', replyTo: 'in' })).toMatchObject({ failed: true });
+    expect(requests).toHaveLength(1);
+    expect(host.store.range({ source: 'qqofficial' }).filter(e => e.type === 'qqofficial.sent')).toHaveLength(0);
+  });
+
+  it('does not bypass content rejection or a disabled fallback setting', async () => {
+    await tool('send_message', { target: destination, content: 'reject', replyTo: 'in' });
+    expect(requests).toHaveLength(1);
+    mode = 'markdown';
+    await tool('send_message', { target: destination, content: 'md', format: 'markdown', fallback: false });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('bounds explicit rate-limit retries', async () => {
+    mode = 'rate';
+    expect(await tool('send_message', { target: destination, content: 'hi' })).toMatchObject({ failed: true });
+    expect(requests).toHaveLength(3);
+  });
+});
+
+describe('media and auxiliary tools', () => {
+  it('uploads a Core image blob as multipart in a guild channel', async () => {
+    host.blobs.set('mem:picture', { bytes: Buffer.from('image-bytes'), mime: 'image/png' });
+    expect(typeof await tool('send_media', { target: { kind: 'channel', id: 'chan' }, fileType: 1, blob: 'mem:picture', replyTo: 'in' })).toBe('string');
+    expect(requests[0].path).toBe('/channels/chan/messages');
+    expect(requests[0].body.multipart).toContain('name="file_image"');
+    expect(requests[0].body.multipart).toContain('image-bytes');
+  });
+
+  it('reports partial media batches without replaying accepted items', async () => {
+    const result = await tool('send_media', { target: destination, items: ['first', 'reject', 'third'].map(content => ({ fileType: 4, url: 'https://example.invalid/test.txt', content })) }) as ToolOutcome;
+    expect(result.failed).toBe(true);
+    expect(JSON.parse(result.text)).toMatchObject({ failedIndex: 1, sent: [expect.any(String)] });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('transcodes outgoing WAV blobs and reads quoted incoming SILK as model audio', async () => {
+    const wav = pcmToWav(new Uint8Array(24000));
+    host.blobs.set('mem:voice', { bytes: wav, mime: 'audio/wav' });
+    expect(typeof await tool('send_media', { target: destination, fileType: 3, blob: 'mem:voice', fileName: 'sample.wav' })).toBe('string');
+    expect(uploads[0]).toMatchObject({ file_type: 3, file_name: 'sample.silk', srv_send_msg: false });
+    expect(isSilk(Buffer.from(String(uploads[0].file_data), 'base64'))).toBe(true);
+    incomingMedia = await audioToSilk(wav, { signal: new AbortController().signal, timeoutMs: 5000, ffmpegPath: 'ffmpeg' });
+    await event('C2C_MESSAGE_CREATE', { id: 'voice-message', author: { user_openid: 'user' }, msg_elements: [{ attachments: [{ url: 'https://gchat.qpic.cn/voice', filename: 'voice.silk' }] }] });
+    const saved = host.store.range({ source: 'qqofficial' }).find(e => e.meta?.messageId === 'voice-message')!;
+    const outcome = await tool('read_attachment', { cursor: saved.cursor, index: 0, quotedIndex: 0 }) as ToolOutcome;
+    expect(outcome.failed, outcome.text).not.toBe(true);
+    expect(outcome.blobs![0]).toMatchObject({ mime: 'audio/wav', name: 'voice.wav' });
+    const blob = outcome.blobs![0];
+    expect('bytes' in blob && Buffer.from(blob.bytes).subarray(0, 4).toString()).toBe('RIFF');
+  });
+
+  it('executes recall and interaction confirmation tools', async () => {
+    await tool('delete_message', { target: destination, messageId: 'sent' });
+    await tool('ack_interaction', { interactionId: 'click', code: 0 });
+    expect(requests.map(r => r.path)).toEqual(['/v2/users/user/messages/sent', '/interactions/click']);
+  });
+});
+
+describe('model output streaming', () => {
+  it('waits for the next response when Core executes the tool eagerly in the calling round', async () => {
+    emit({ type: 'response.created', response: { id: 'tool-round' } });
+    await tool('stream_message', { target: destination, replyTo: 'in', followModel: true });
+    emit({ type: 'response.output_text.delta', delta: 'calling-round text' });
+    world.outputTap()!.onRoundEnd!();
+    expect(world['replyStream']!.closed).toBe(false);
+    emit({ type: 'response.created', response: { id: 'reply-round' } });
+    emit({ type: 'response.output_text.delta', delta: 'next-round reply' });
+    world.outputTap()!.onRoundEnd!();
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0].body).toMatchObject({ content_raw: 'next-round reply\n', input_state: 10 });
+  });
+
+  it('sends only public deltas to the explicitly selected target and closes at round end', async () => {
+    expect(typeof await tool('stream_message', { target: destination, replyTo: 'in', followModel: true })).toBe('string');
+    emit({ type: 'response.reasoning.delta', delta: 'private reasoning' });
+    emit({ type: 'response.function_call_arguments.delta', delta: 'private tool args' });
+    emit({ type: 'response.output_text.delta', delta: '你好' });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    emit({ type: 'response.output_text.delta', delta: '，世界' });
+    world.outputTap()!.onRoundEnd!();
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests.map(r => r.body.content_raw).join('')).toBe('你好，世界\n');
+    expect(requests.map(r => r.body.input_state)).toEqual([1, 10]);
+    expect(requests.map(r => r.body.msg_seq)).toEqual([1, 1]);
+    expect(requests.every(r => r.body.msg_id === 'in')).toBe(true);
+    emit({ type: 'response.output_text.delta', delta: 'later round' });
+    await world['outgoing']; expect(requests).toHaveLength(2);
+  });
+
+  it.each(['abort', 'tool'])('closes an opened stream on %s without duplicating its text', async reason => {
+    await tool('stream_message', { target: destination, replyTo: 'in', followModel: true });
+    emit({ type: 'response.output_text.delta', delta: 'once' });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    if (reason === 'abort') world.outputTap()!.onAbort!('cancelled');
+    else emit({ type: 'response.output_item.added', item: { type: 'function_call', name: 'other_tool' } });
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[1].body).toMatchObject({ content_raw: '\n', input_state: 10, index: 1 });
+  });
+
+  it('buffers non-C2C output into a normal reply', async () => {
+    await tool('stream_message', { target: { kind: 'group', id: 'group' }, followModel: true, format: 'text' });
+    emit({ type: 'response.output_text.delta', delta: 'one' });
+    emit({ type: 'response.output_text.delta', delta: 'two' });
+    world.outputTap()!.onRoundEnd!();
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatchObject({ path: '/v2/groups/group/messages', body: { content: 'onetwo' } });
+  });
+
+  it('disarms a selected route if another external conversation arrives', async () => {
+    await tool('stream_message', { target: destination, followModel: true });
+    await host.pushEvent({ type: 'local.message', source: 'local', origin: 'external', text: 'private local conversation', ts: new Date().toISOString() });
+    emit({ type: 'response.output_text.delta', delta: 'must stay local' });
+    world.outputTap()!.onRoundEnd!(); await world['outgoing'];
+    expect(requests).toHaveLength(0);
+  });
+
+  it('does not replay partial streams after an uncertain continuation', async () => {
+    mode = 'stream-error';
+    await tool('stream_message', { target: destination, replyTo: 'in', followModel: true });
+    emit({ type: 'response.output_text.delta', delta: 'first' });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    emit({ type: 'response.output_text.delta', delta: 'second' });
+    world.outputTap()!.onRoundEnd!();
+    await vi.waitFor(() => expect(host.store.range({ source: 'qqofficial' }).some(e => e.meta?.eventType === 'REPLY_STREAM_FAILED')).toBe(true));
+    await world.stop(); await start();
+    expect(await tool('stream_message', { target: destination, streamId: 'sent-1', content: 'retry' })).toMatchObject({ failed: true });
+    expect(requests).toHaveLength(2);
+  });
+
+  it('automatically closes an idle manual stream', async () => {
+    ctx.value.cfg.streamIdleMs = 100;
+    await tool('stream_message', { target: destination, content: 'first', finish: false });
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[1].body.input_state).toBe(10);
+  });
+
+  it('buffers the complete reply when the streaming endpoint explicitly does not exist', async () => {
+    mode = 'no-stream';
+    await tool('stream_message', { target: destination, replyTo: 'in', followModel: true, format: 'text' });
+    emit({ type: 'response.output_text.delta', delta: 'first' });
+    await vi.waitFor(() => expect(host.store.range({ source: 'qqofficial' }).some(e => e.meta?.eventType === 'REPLY_STREAM_BUFFERED')).toBe(true));
+    emit({ type: 'response.output_text.delta', delta: ' second' });
+    world.outputTap()!.onRoundEnd!();
+    await vi.waitFor(() => expect(requests).toHaveLength(2));
+    expect(requests[1]).toMatchObject({ path: '/v2/users/user/messages', body: { content: 'first second' } });
+  });
+
+  it('closes a partially sent reply after an explicit rejection without replaying content', async () => {
+    mode = 'stream-rejected';
+    await tool('stream_message', { target: destination, replyTo: 'in', followModel: true });
+    emit({ type: 'response.output_text.delta', delta: 'first' });
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    emit({ type: 'response.output_text.delta', delta: 'rejected' });
+    world.outputTap()!.onRoundEnd!(); world.onTurnEnded();
+    await vi.waitFor(() => expect(requests).toHaveLength(3));
+    expect(requests[2].body).toMatchObject({ content_raw: '\n', input_state: 10, index: 1 });
+    expect(host.store.range({ source: 'qqofficial' }).filter(e => e.type === 'qqofficial.sent')).toHaveLength(2);
+    await world.stop(); await start();
+    expect(world['streams'].size).toBe(0);
+  });
+
+  it('delivers proactive C2C model output as one ordinary notification without calling the stream endpoint', async () => {
+    const armed = JSON.parse(await tool('stream_message', { target: destination, delivery: 'proactive', followModel: true, format: 'text' }) as string);
+    expect(armed.streaming).toBe(false);
+    emit({ type: 'response.output_text.delta', delta: 'scheduled ' });
+    await new Promise(resolve => setTimeout(resolve, 20));
+    expect(requests).toHaveLength(0);
+    emit({ type: 'response.output_text.delta', delta: 'notification' });
+    world.outputTap()!.onRoundEnd!();
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]).toMatchObject({ path: '/v2/users/user/messages', body: { content: 'scheduled notification' } });
+    expect(requests[0].body.msg_id).toBeUndefined();
+  });
+});

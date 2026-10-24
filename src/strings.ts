@@ -1,6 +1,21 @@
 import type { Language } from 'cortico/core/language.ts';
 
-export interface QQOfficialStrings {
+export const QQOFFICIAL_DELIVERY_LABELS: Record<Language, readonly [string, string, string, string, string]> = {
+  zh: ['明确失败后自动降级', '主动消息最小间隔', '流式分片最小间隔', '流式空闲收尾时间', 'FFmpeg 可执行文件'],
+  en: ['Fallback after explicit rejection', 'Proactive message interval', 'Stream chunk interval', 'Close idle streams after', 'FFmpeg executable'],
+  'zh-Hant': ['明確失敗後自動降級', '主動訊息最小間隔', '串流分片最小間隔', '串流閒置收尾時間', 'FFmpeg 執行檔'],
+  ja: ['明確な拒否後の自動切り替え', '自発メッセージの最小間隔', 'ストリーム送信の最小間隔', '無通信時のストリーム終了時間', 'FFmpeg 実行ファイル'],
+  ko: ['명시적 거부 후 자동 전환', '선제 메시지 최소 간격', '스트림 조각 최소 간격', '유휴 스트림 종료 시간', 'FFmpeg 실행 파일'],
+  fr: ['Repli après un refus explicite', 'Intervalle des messages proactifs', 'Intervalle des fragments', 'Délai de fermeture du flux inactif', 'Exécutable FFmpeg'],
+  de: ['Fallback nach ausdrücklicher Ablehnung', 'Intervall proaktiver Nachrichten', 'Intervall der Stream-Abschnitte', 'Inaktiven Stream schließen nach', 'FFmpeg-Programmdatei'],
+  'es-419': ['Alternativa tras un rechazo explícito', 'Intervalo de mensajes proactivos', 'Intervalo de fragmentos', 'Cerrar flujo inactivo después de', 'Ejecutable de FFmpeg'],
+  'pt-BR': ['Alternativa após rejeição explícita', 'Intervalo de mensagens proativas', 'Intervalo dos fragmentos', 'Fechar fluxo inativo após', 'Executável do FFmpeg'],
+  it: ['Alternativa dopo un rifiuto esplicito', 'Intervallo dei messaggi proattivi', 'Intervallo dei frammenti', 'Chiusura del flusso inattivo dopo', 'Eseguibile FFmpeg'],
+  ru: ['Резервная отправка после явного отказа', 'Интервал инициативных сообщений', 'Интервал фрагментов потока', 'Закрывать неактивный поток через', 'Исполняемый файл FFmpeg'],
+};
+import { connectionText, type QQOfficialConnectionStrings } from './connection-text.ts';
+
+export interface QQOfficialStrings extends QQOfficialConnectionStrings {
   settings: string;
   transport: string;
   appId: string;
@@ -22,7 +37,6 @@ export interface QQOfficialStrings {
   save: string;
   bind: string;
   open: string;
-  poll: string;
   saved: string;
   pending: string;
   expired: string;
@@ -34,7 +48,7 @@ export interface QQOfficialStrings {
   error: string;
 }
 
-const STRINGS: Record<Language, QQOfficialStrings> = {
+const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnectionStrings>> = {
   "zh": {
     settings: "接入配置",
     transport: "传输方式",
@@ -57,7 +71,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "保存凭证",
     bind: "获取绑定链接",
     open: "打开绑定页面",
-    poll: "查询绑定结果",
     saved: "凭证已保存；启用或重启 World 后生效。",
     pending: "等待绑定",
     expired: "绑定已过期",
@@ -90,7 +103,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "Save credentials",
     bind: "Get binding link",
     open: "Open binding page",
-    poll: "Check binding",
     saved: "Credentials saved; enable or restart the World to apply.",
     pending: "Waiting for binding",
     expired: "Binding expired",
@@ -123,7 +135,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "儲存憑證",
     bind: "取得綁定連結",
     open: "開啟綁定頁面",
-    poll: "查詢綁定結果",
     saved: "憑證已儲存；啟用或重新啟動 World 後生效。",
     pending: "等待綁定",
     expired: "綁定已過期",
@@ -156,7 +167,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "認証情報を保存",
     bind: "連携リンクを取得",
     open: "連携ページを開く",
-    poll: "連携状態を確認",
     saved: "認証情報を保存しました。World を有効化または再起動すると反映されます。",
     pending: "連携待ち",
     expired: "連携リンクの期限切れ",
@@ -189,7 +199,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "인증 정보 저장",
     bind: "연결 링크 받기",
     open: "연결 페이지 열기",
-    poll: "연결 결과 확인",
     saved: "인증 정보를 저장했습니다. World를 활성화하거나 재시작하면 적용됩니다.",
     pending: "연결 대기 중",
     expired: "연결 만료",
@@ -222,7 +231,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "Enregistrer les identifiants",
     bind: "Obtenir le lien d’association",
     open: "Ouvrir la page d’association",
-    poll: "Vérifier l’association",
     saved: "Identifiants enregistrés ; activez ou redémarrez le World pour les appliquer.",
     pending: "Association en attente",
     expired: "Association expirée",
@@ -255,7 +263,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "Zugangsdaten speichern",
     bind: "Verknüpfungslink abrufen",
     open: "Verknüpfungsseite öffnen",
-    poll: "Verknüpfung prüfen",
     saved: "Zugangsdaten gespeichert; World aktivieren oder neu starten, um sie anzuwenden.",
     pending: "Warte auf Verknüpfung",
     expired: "Verknüpfung abgelaufen",
@@ -288,7 +295,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "Guardar credenciales",
     bind: "Obtener enlace de vinculación",
     open: "Abrir página de vinculación",
-    poll: "Consultar vinculación",
     saved: "Credenciales guardadas; activa o reinicia el World para aplicarlas.",
     pending: "Esperando vinculación",
     expired: "Vinculación vencida",
@@ -321,7 +327,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "Salvar credenciais",
     bind: "Obter link de vinculação",
     open: "Abrir página de vinculação",
-    poll: "Consultar vinculação",
     saved: "Credenciais salvas; ative ou reinicie o World para aplicá-las.",
     pending: "Aguardando vinculação",
     expired: "Vinculação expirada",
@@ -354,7 +359,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "Salva credenziali",
     bind: "Ottieni link di associazione",
     open: "Apri pagina di associazione",
-    poll: "Verifica associazione",
     saved: "Credenziali salvate; attiva o riavvia il World per applicarle.",
     pending: "In attesa di associazione",
     expired: "Associazione scaduta",
@@ -387,7 +391,6 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
     save: "Сохранить учётные данные",
     bind: "Получить ссылку привязки",
     open: "Открыть страницу привязки",
-    poll: "Проверить привязку",
     saved: "Учётные данные сохранены; включите или перезапустите World для применения.",
     pending: "Ожидание привязки",
     expired: "Срок привязки истёк",
@@ -400,17 +403,18 @@ const STRINGS: Record<Language, QQOfficialStrings> = {
   },
 };
 
-export function qqOfficialText(language: Language = 'zh'): QQOfficialStrings { return STRINGS[language]; }
+export function qqOfficialText(language: Language = 'zh'): QQOfficialStrings { return { ...STRINGS[language], ...connectionText(language) }; }
 
 
 export const QQOFFICIAL_TOOL_SUMMARIES: Record<string, { zh: string; en: string }> = {
   qqofficial_send_message: { zh: '发送文本或 Markdown 消息。', en: 'Sends text or Markdown messages.' },
   qqofficial_send_media: { zh: '发送图片、语音、视频或文件。', en: 'Sends images, voice, video or files.' },
-  qqofficial_stream_message: { zh: '向 QQ 单聊发送流式消息分片。', en: 'Sends streaming message parts to a QQ direct chat.' },
+  qqofficial_stream_message: { zh: '发送流式分片或自动转发下一轮回复正文。', en: 'Sends stream parts or forwards the next public reply.' },
   qqofficial_delete_message: { zh: '撤回机器人发送的消息。', en: 'Recalls messages sent by the bot.' },
   qqofficial_history: { zh: '读取当前机器人在 Core 中保存的事件历史。', en: 'Reads this bot’s event history stored by Core.' },
   qqofficial_read_attachment: { zh: '读取已保存消息的 QQ CDN 附件。', en: 'Reads QQ CDN attachments from stored messages.' },
   qqofficial_ack_interaction: { zh: '确认平台互动事件。', en: 'Acknowledges platform interactions.' },
+  qqofficial_list_targets: { zh: '查询已知 QQ 会话及主动接收状态。', en: 'Lists known QQ targets and proactive reception state.' },
 };
 
 export const QQOFFICIAL_EVENT_DESCRIPTIONS = {

@@ -1,6 +1,6 @@
 import type { Language } from 'cortico/core/language.ts';
 import type { ConfigGroup } from 'cortico/core/types.ts';
-import { qqOfficialText } from './strings.ts';
+import { qqOfficialText, QQOFFICIAL_DELIVERY_LABELS } from './strings.ts';
 import { integer } from './protocol.ts';
 
 export const QQOFFICIAL_ID = 'qqofficial';
@@ -17,6 +17,11 @@ export interface QQOfficialConfigSection {
   reconnectMs: number;
   maxReconnectMs: number;
   maxMediaBytes: number;
+  autoFallback: boolean;
+  proactiveIntervalMs: number;
+  streamIntervalMs: number;
+  streamIdleMs: number;
+  ffmpegPath: string;
   modelLanguage: 'zh' | 'en';
 }
 
@@ -25,7 +30,8 @@ export const QQOFFICIAL_DEFAULTS: QQOfficialConfigSection = {
   intents: 1 << 25,
   webhook: { host: '127.0.0.1', port: 6196, path: '/qqofficial/callback', maxBodyBytes: 1024 * 1024 },
   timeoutMs: 20000, reconnectMs: 1000, maxReconnectMs: 30000,
-  maxMediaBytes: 10 * 1024 * 1024, modelLanguage: 'zh',
+  maxMediaBytes: 100 * 1024 * 1024, modelLanguage: 'zh',
+  autoFallback: true, proactiveIntervalMs: 3000, streamIntervalMs: 500, streamIdleMs: 15000, ffmpegPath: 'ffmpeg',
 };
 
 export function validateConfig(cfg: QQOfficialConfigSection): void {
@@ -35,7 +41,12 @@ export function validateConfig(cfg: QQOfficialConfigSection): void {
   integer(cfg.timeoutMs, 'timeoutMs', 100, 300000);
   integer(cfg.reconnectMs, 'reconnectMs', 10, 300000);
   integer(cfg.maxReconnectMs, 'maxReconnectMs', cfg.reconnectMs, 300000);
-  integer(cfg.maxMediaBytes, 'maxMediaBytes', 1, 20 * 1024 * 1024);
+  integer(cfg.maxMediaBytes, 'maxMediaBytes', 1, 100 * 1024 * 1024);
+  if (typeof cfg.autoFallback !== 'boolean') throw new Error('Invalid autoFallback');
+  integer(cfg.proactiveIntervalMs, 'proactiveIntervalMs', 0, 60000);
+  integer(cfg.streamIntervalMs, 'streamIntervalMs', 0, 5000);
+  integer(cfg.streamIdleMs, 'streamIdleMs', 100, 120000);
+  if (typeof cfg.ffmpegPath !== 'string' || !cfg.ffmpegPath.trim() || /[\r\n\0]/.test(cfg.ffmpegPath)) throw new Error('Invalid ffmpegPath');
   integer(cfg.webhook.port, 'webhook.port', 0, 65535);
   integer(cfg.webhook.maxBodyBytes, 'webhook.maxBodyBytes', 1, 10 * 1024 * 1024);
   if (!cfg.webhook.host || !/^\/[\w/-]+$/.test(cfg.webhook.path)) throw new Error('Invalid webhook address');
@@ -44,6 +55,7 @@ export function validateConfig(cfg: QQOfficialConfigSection): void {
 export function qqOfficialConfigGroup(language?: Language): ConfigGroup {
   const t = qqOfficialText(language);
   const k = 'worlds.qqofficial';
+  const labels = QQOFFICIAL_DELIVERY_LABELS[language ?? 'zh'];
   return {
     id: 'world:qqofficial', owner: 'world:qqofficial',
     schema: { type: 'object', title: t.settings, properties: {
@@ -58,7 +70,12 @@ export function qqOfficialConfigGroup(language?: Language): ConfigGroup {
       [`${k}.timeoutMs`]: { type: 'integer', title: t.timeoutMs, minimum: 100, maximum: 300000, 'x-suffix': 'ms', 'x-hot': false },
       [`${k}.reconnectMs`]: { type: 'integer', title: t.reconnectMs, minimum: 10, maximum: 300000, 'x-suffix': 'ms', 'x-hot': false },
       [`${k}.maxReconnectMs`]: { type: 'integer', title: t.maxReconnectMs, minimum: 10, maximum: 300000, 'x-suffix': 'ms', 'x-hot': false },
-      [`${k}.maxMediaBytes`]: { type: 'integer', title: t.maxMediaBytes, minimum: 1, maximum: 20 * 1024 * 1024, 'x-hot': true },
+      [`${k}.maxMediaBytes`]: { type: 'integer', title: t.maxMediaBytes, minimum: 1, maximum: 100 * 1024 * 1024, 'x-hot': true },
+      [`${k}.autoFallback`]: { type: 'boolean', title: labels[0], 'x-hot': true },
+      [`${k}.proactiveIntervalMs`]: { type: 'integer', title: labels[1], minimum: 0, maximum: 60000, 'x-suffix': 'ms', 'x-hot': true },
+      [`${k}.streamIntervalMs`]: { type: 'integer', title: labels[2], minimum: 0, maximum: 5000, 'x-suffix': 'ms', 'x-hot': true },
+      [`${k}.streamIdleMs`]: { type: 'integer', title: labels[3], minimum: 100, maximum: 120000, 'x-suffix': 'ms', 'x-hot': true },
+      [`${k}.ffmpegPath`]: { type: 'string', title: labels[4], 'x-hot': true },
       [`${k}.modelLanguage`]: { type: 'string', title: t.modelLanguage, enum: ['zh', 'en'], 'x-hot': true },
     } },
   };

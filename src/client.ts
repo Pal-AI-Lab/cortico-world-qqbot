@@ -13,9 +13,19 @@ export interface QQOfficialClientOptions {
 }
 
 export class QQOfficialApiError extends Error {
-  constructor(readonly status: number, readonly code: unknown, readonly traceId: string | null, readonly retryAfter: string | null) {
+  readonly kind: 'anchor' | 'markdown' | 'newline' | 'rate' | 'proactive' | 'upload' | 'other';
+  constructor(readonly status: number, readonly code: unknown, readonly traceId: string | null, readonly retryAfter: string | null, detail = '') {
     super(`QQ Official HTTP ${status}; code=${typeof code === 'number' || typeof code === 'string' ? code : 'unknown'}; trace=${traceId ?? 'none'}; retry-after=${retryAfter ?? 'none'}`);
+    // Interpret known rejection reasons without exposing platform response text (which may contain credentials).
+    const n = Number(code);
+    this.kind = [304103, 40034005, 40034026, 40034027, 40034128].includes(n) ? 'anchor'
+      : n === 40034127 || /不允许发送原生\s*markdown/i.test(detail) ? 'markdown'
+      : /流式消息md分片需要.*结束/.test(detail) ? 'newline'
+      : status === 429 || [22009, 50002, 40034100].includes(n) ? 'rate'
+      : n === 40034105 ? 'proactive' : n === 40093001 ? 'upload' : 'other';
   }
+
+  get rejected(): boolean { return this.code !== 'invalid_json' && ((this.status >= 400 && this.status < 500 && this.status !== 408) || (this.status >= 200 && this.status < 300)); }
 }
 
 /** Credentials stay in the transport. POSTs are retried only after an explicit authentication rejection. */
@@ -48,7 +58,7 @@ export class QQOfficialClient {
     try { return await this.refreshing; } finally { this.refreshing = null; }
   }
 
-  async request(method: 'GET' | 'POST' | 'DELETE' | 'PUT', path: string, body?: JsonObject, signal?: AbortSignal): Promise<JsonObject> {
+  async request(method: 'GET' | 'POST' | 'DELETE' | 'PUT', path: string, body?: JsonObject | FormData, signal?: AbortSignal): Promise<JsonObject> {
     for (let attempt = 0; attempt < 2; attempt++) {
       signal?.throwIfAborted();
       const token = await this.accessToken();
@@ -56,8 +66,8 @@ export class QQOfficialClient {
       combined.throwIfAborted();
       const response = await fetch(`${this.options.apiUrl ?? QQOFFICIAL_API_URL}${path}`, {
         method, redirect: 'error', signal: combined,
-        headers: { Authorization: `QQBot ${token}`, 'X-Union-Appid': this.options.appId, 'Content-Type': 'application/json' },
-        ...(body ? { body: JSON.stringify(body) } : {}),
+        headers: { Authorization: `QQBot ${token}`, 'X-Union-Appid': this.options.appId, ...(body instanceof FormData ? {} : { 'Content-Type': 'application/json' }) },
+        ...(body ? { body: body instanceof FormData ? body : JSON.stringify(body) } : {}),
       });
       if (response.status === 401 && attempt === 0) {
         await response.body?.cancel();
@@ -76,7 +86,7 @@ export class QQOfficialClient {
       throw new QQOfficialApiError(response.status, 'invalid_json', response.headers.get('x-tps-trace-id'), null);
     }
     if (!response.ok || (data.code !== undefined && data.code !== 0 && data.code !== '0')) {
-      throw new QQOfficialApiError(response.status, data.code, response.headers.get('x-tps-trace-id'), response.headers.get('retry-after'));
+      throw new QQOfficialApiError(response.status, data.code, response.headers.get('x-tps-trace-id'), response.headers.get('retry-after'), typeof data.message === 'string' ? data.message : '');
     }
     return data;
   }

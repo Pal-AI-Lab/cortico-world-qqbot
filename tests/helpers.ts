@@ -49,7 +49,7 @@ export class TestHost implements WorldHost {
 }
 
 export function context(overrides: Partial<QQOfficialConfigSection> = {}) {
-  const cfg = { ...structuredClone(QQOFFICIAL_DEFAULTS), ...overrides };
+  const cfg = { ...structuredClone(QQOFFICIAL_DEFAULTS), proactiveIntervalMs: 0, streamIntervalMs: 0, ...overrides };
   const secrets = new Map<string, string>();
   const value: WorldContext<QQOfficialConfigSection> = {
     id: 'qqofficial', cfg, timezone: 'UTC', botName: 'test', botDir: '', packageDir: '', dataDir: '', repoRoot: '',
