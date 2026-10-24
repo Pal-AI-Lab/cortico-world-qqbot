@@ -10,6 +10,7 @@
 - Forward explicitly selected model replies through the existing World output tap, with chunk throttling, conversation isolation and automatic stream completion; buffer proactive notifications through the regular message API.
 - Downgrade explicit expired-anchor, Markdown and unsupported-stream rejections; bound rate retries and preserve uncertain delivery across restarts without replaying content.
 - Extend protocol, streaming and real codec regression coverage for API 6 and Coopanion’s API 5 runtime; update model instructions, localized settings and package metadata.
+- Document npm installation and declare the Cortico tags for FFmpeg setup and local-file media access.
 
 ## 0.1.1
 

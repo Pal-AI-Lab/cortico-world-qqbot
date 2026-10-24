@@ -21,6 +21,10 @@
     "node": ">=22"
   },
   "packageManager": "pnpm@11.5.0",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "main": "./src/index.ts",
   "cortico": {
     "kind": "world",
@@ -29,8 +33,10 @@
     "tags": [
       "im",
       "qq",
+      "external-setup",
       "requires-key",
-      "experimental"
+      "experimental",
+      "unsafe"
     ],
     "describe": "describe.json",
     "locales": {

@@ -12,6 +12,13 @@ The World uses ID `qqofficial`. It can coexist with `cortico-world-qq`, which us
 
 Requires Node.js 22 or later. Install FFmpeg for common audio transcoding and audio tests, or configure `ffmpegPath`. The SILK codec is installed as an npm dependency. The main package targets **Cortico World API 6** and is developed against the `cortico@0.2.6` SDK.
 
+In Cortico or Coopanion's extension page, select **World** and install `cortico-world-qq-official@0.2.0` from npm. Restart Core to load it. From an existing Cortico installation, the equivalent command is:
+
+```sh
+cd extensions
+corepack pnpm add cortico-world-qq-official@0.2.0
+```
+
 From a checkout:
 
 ```sh
@@ -22,7 +29,7 @@ pnpm verify
 
 In Cortico or Coopanion's extension page, choose **World → local directory** and select this repository. Restart Core to load the extension. For a portable archive, run `npm pack --ignore-scripts`; the archive contains the runtime source, browser panel and self-description.
 
-For a host that still uses **World API 5**, including Coopanion pinned to Cortico commit `88a5e4ddfd8504eee8eb6353d7a9aab9f0e455be`:
+For an older host that still uses **World API 5**, use the API 5 archive from [GitHub Releases](https://github.com/leafliber/cortico-world-qq-official/releases), or generate it from source:
 
 ```sh
 pnpm pack:api5
@@ -85,6 +92,8 @@ Attachment reads accept HTTPS URLs on `qq.com`, `qq.com.cn`, `qpic.cn`, `ugcimg.
 Channels and guild DMs support text, Markdown, remote images and multipart local images. C2C and groups support images, voice, video and files. The default media read limit is 100 MiB; outgoing limits are additionally 30 MiB for images, 20 MiB for voice and 100 MiB for video/files. QQ may impose tighter limits. Files of 5 MiB or more use chunked uploads with plan validation, per-part confirmation and final merge. Uploaded handles are cached according to QQ’s TTL. Media batches stop on failure and return accepted items plus the failing index, without replaying the batch.
 
 Outgoing voice is decoded by FFmpeg to 24 kHz mono PCM and encoded as Tencent SILK. Incoming SILK and common audio become WAV, bounded to ten minutes. Missing FFmpeg or malformed audio produces an explicit error. Audio URL downloads validate public addresses and pin DNS at every redirect; decoding disables nested file/network protocols. Speech recognition is left to an audio-capable model through Core. Interaction acknowledgements require an explicit tool call within QQ’s deadline.
+
+The local-path option in `qqofficial_send_media` can read any regular file accessible to the host process, subject to the media size limits, and send it to QQ. It has no directory allowlist or per-file approval prompt. The package declares Cortico's `unsafe` tag for this capability and `external-setup` for FFmpeg.
 
 ## Configuration
 

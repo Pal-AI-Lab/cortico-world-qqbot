@@ -12,6 +12,13 @@ World ID 为 `qqofficial`，可与使用其他协议、ID 为 `qq` 的 `cortico-
 
 需要 Node.js 22 或更高版本；常见音频格式的收发转码和音频测试需要系统安装 FFmpeg（也可配置 `ffmpegPath`）。SILK 编解码器随 npm 依赖安装。主包使用 **Cortico World API 6**，开发依赖固定为 `cortico@0.2.6` SDK。
 
+在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.0`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
+
+```sh
+cd extensions
+corepack pnpm add cortico-world-qq-official@0.2.0
+```
+
 在源码目录运行：
 
 ```sh
@@ -22,7 +29,7 @@ pnpm verify
 
 在 Cortico 或 Coopanion 扩展页选择 **World → 本机目录**，选择本仓库，重启 Core 后加载。运行 `npm pack --ignore-scripts` 可生成包含运行源码、浏览器面板和能力声明的安装包。
 
-宿主仍使用 **World API 5** 时，包括 Cortico 固定在 `88a5e4ddfd8504eee8eb6353d7a9aab9f0e455be` 的 Coopanion，运行：
+旧宿主仍使用 **World API 5** 时，可下载 [GitHub Releases](https://github.com/leafliber/cortico-world-qq-official/releases) 中的 API 5 兼容包，也可从源码生成：
 
 ```sh
 pnpm pack:api5
@@ -85,6 +92,8 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 频道和频道私信支持文本、Markdown、远程图片及本地图片 multipart 上传，C2C 与群聊支持图片、语音、视频和文件。上传读取和附件下载默认上限为 100 MiB；发送还受图片 30 MiB、语音 20 MiB、视频和文件 100 MiB 的本地上限约束，QQ 可另行收紧。5 MiB 起使用平台分块上传协议，校验完整分块计划、逐块确认后合并，并按平台 TTL 缓存文件句柄。批量发送遇错即停止，返回已成功项与失败位置，避免整批重发。
 
 出站语音通过 FFmpeg 转为 24 kHz 单声道 PCM，再编码为 Tencent SILK；入站 SILK 和常见音频转为 WAV，最多十分钟。FFmpeg 缺失或格式损坏会明确报错。音频 URL 下载校验公网地址并固定 DNS 解析，每次重定向重新检查；解码器禁用嵌套文件和网络协议。扩展不内置语音识别，Core 决定当前模型能否读取音频。互动确认仍需明确调用工具，并满足 QQ 的确认时限。
+
+`qqofficial_send_media` 的本地路径选项可读取宿主进程有权访问、符合媒体大小限制的任意普通文件，并发送到 QQ；没有目录白名单或逐文件确认弹窗。因此按 Cortico 规范声明 `unsafe` 标签，并为 FFmpeg 声明 `external-setup` 标签。
 
 ## 配置
 
