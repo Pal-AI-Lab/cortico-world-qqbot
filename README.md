@@ -1,6 +1,15 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
-# cortico-world-qq-official
+<p align="center">
+  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/icon.svg" alt="QQ Official World" width="88" height="88">
+</p>
+
+# QQ Official World
+
+[![npm](https://img.shields.io/npm/v/cortico-world-qq-official?color=1d4ed8)](https://www.npmjs.com/package/cortico-world-qq-official)
+![Cortico World API 6](https://img.shields.io/badge/Cortico_World-API_6-1d4ed8)
+![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-19815e)
+[![AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-64748b)](LICENSE)
 
 [简体中文](README_zh.md)
 
@@ -8,15 +17,27 @@ A Cortico World for the QQ Official API. It receives QQ events through a WebSock
 
 The World uses ID `qqofficial`. It can coexist with `cortico-world-qq`, which uses a different protocol and World ID. One configured QQ bot is supported per deployment.
 
+By [leafliber](https://github.com/leafliber) · [npm](https://www.npmjs.com/package/cortico-world-qq-official) · [Support](https://github.com/leafliber/cortico-world-qq-official/issues) · [Release notes](CHANGELOG.md). This community extension uses QQ’s official API; it is not an official Tencent or Cortico product.
+
+## Panel previews
+
+The screenshots render the actual extension panels with Cortico UI components and sample data. They contain no live QR authorization, bot credentials or private conversations.
+
+![QQ connection panel](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connection-zh.png)
+
+![Connection success panel with the QR code removed](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connected-zh.png)
+
+![Credentials and connection settings](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/configuration-zh.png)
+
 ## Install
 
 Requires Node.js 22 or later. Install FFmpeg for common audio transcoding and audio tests, or configure `ffmpegPath`. The SILK codec is installed as an npm dependency. The main package targets **Cortico World API 6** and is developed against the `cortico@0.2.6` SDK.
 
-In Cortico or Coopanion's extension page, select **World** and install `cortico-world-qq-official@0.2.0` from npm. Restart Core to load it. From an existing Cortico installation, the equivalent command is:
+In Cortico or Coopanion's extension page, select **World** and install `cortico-world-qq-official@0.2.1` from npm. Restart Core to load it. From an existing Cortico installation, the equivalent command is:
 
 ```sh
 cd extensions
-corepack pnpm add cortico-world-qq-official@0.2.0
+corepack pnpm add cortico-world-qq-official@0.2.1
 ```
 
 From a checkout:

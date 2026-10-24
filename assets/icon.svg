@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">QQ Official World</title>
+  <desc id="desc">An original blue chat icon with two Q letters and a green connection indicator.</desc>
+  <rect width="512" height="512" rx="112" fill="#1d4ed8"/>
+  <path d="M138 118h236a42 42 0 0 1 42 42v168a42 42 0 0 1-42 42H228l-70 44v-44h-20a42 42 0 0 1-42-42V160a42 42 0 0 1 42-42Z" fill="#fff"/>
+  <g fill="none" stroke="#1d4ed8" stroke-width="18" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="206" cy="240" rx="34" ry="44"/>
+    <path d="m218 258 25 27"/>
+    <ellipse cx="306" cy="240" rx="34" ry="44"/>
+    <path d="m318 258 25 27"/>
+  </g>
+  <circle cx="386" cy="384" r="38" fill="#1d4ed8"/>
+  <circle cx="386" cy="384" r="27" fill="#6ee7b7"/>
+</svg>

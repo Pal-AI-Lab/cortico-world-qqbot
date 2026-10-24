@@ -1,6 +1,15 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
-# cortico-world-qq-official
+<p align="center">
+  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/icon.svg" alt="QQ Official World" width="88" height="88">
+</p>
+
+# QQ Official World
+
+[![npm](https://img.shields.io/npm/v/cortico-world-qq-official?color=1d4ed8)](https://www.npmjs.com/package/cortico-world-qq-official)
+![Cortico World API 6](https://img.shields.io/badge/Cortico_World-API_6-1d4ed8)
+![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-19815e)
+[![AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-64748b)](LICENSE)
 
 [English](README.md)
 
@@ -8,15 +17,27 @@
 
 World ID 为 `qqofficial`，可与使用其他协议、ID 为 `qq` 的 `cortico-world-qq` 共存。每份部署支持配置一个 QQ 机器人。
 
+作者：[leafliber](https://github.com/leafliber) · [npm](https://www.npmjs.com/package/cortico-world-qq-official) · [问题反馈](https://github.com/leafliber/cortico-world-qq-official/issues) · [更新日志](CHANGELOG.md)。这是使用 QQ 官方接口的社区扩展，不是腾讯或 Cortico 官方出品。
+
+## 界面预览
+
+以下截图使用扩展的真实面板代码、Cortico 界面组件与示例数据渲染，不含有效扫码授权、真实机器人凭证或私人聊天。
+
+![QQ 扫码连接面板](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connection-zh.png)
+
+![连接成功后隐藏二维码](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/connected-zh.png)
+
+![凭证与接入配置](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.1/assets/screenshots/configuration-zh.png)
+
 ## 安装
 
 需要 Node.js 22 或更高版本；常见音频格式的收发转码和音频测试需要系统安装 FFmpeg（也可配置 `ffmpegPath`）。SILK 编解码器随 npm 依赖安装。主包使用 **Cortico World API 6**，开发依赖固定为 `cortico@0.2.6` SDK。
 
-在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.0`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
+在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.1`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
 
 ```sh
 cd extensions
-corepack pnpm add cortico-world-qq-official@0.2.0
+corepack pnpm add cortico-world-qq-official@0.2.1
 ```
 
 在源码目录运行：

@@ -1,10 +1,14 @@
 {
   "name": "cortico-world-qq-official",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
-  "description": "QQ Official API World for Cortico: gateway and webhook events, messaging and media",
+  "description": "QQ Official API integration for Cortico and Coopanion: QR binding, messaging, media and streamed replies",
   "license": "AGPL-3.0-or-later",
-  "author": "leafliber",
+  "author": {
+    "name": "leafliber",
+    "url": "https://github.com/leafliber"
+  },
+  "homepage": "https://github.com/leafliber/cortico-world-qq-official#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/leafliber/cortico-world-qq-official.git"
@@ -15,7 +19,11 @@
   "keywords": [
     "cortico-world",
     "cortico",
-    "qqofficial"
+    "qqofficial",
+    "qq",
+    "qq-bot",
+    "im",
+    "messaging"
   ],
   "engines": {
     "node": ">=22"
@@ -27,6 +35,8 @@
   },
   "main": "./src/index.ts",
   "cortico": {
+    "displayName": "QQ Official",
+    "icon": "assets/icon.svg",
     "kind": "world",
     "api": 6,
     "webUiClient": "src/webui.js",
@@ -39,19 +49,25 @@
       "unsafe"
     ],
     "describe": "describe.json",
+    "screenshots": [
+      "assets/screenshots/connection-zh.png",
+      "assets/screenshots/connected-zh.png",
+      "assets/screenshots/configuration-zh.png"
+    ],
     "locales": {
       "zh": {
-        "displayName": "QQ Official",
-        "description": "通过 QQ 官方接口收取事件、发送消息和媒体，支持 QQ 机器人凭证绑定。"
+        "displayName": "QQ 官方机器人",
+        "description": "通过 QQ 官方机器人接口，让 Cortico / Coopanion 收取消息并发送回复。\n\n- 手机 QQ 扫码绑定，自动保存凭证并展示连接状态；也可手动配置。\n- 接收单聊、群聊与频道事件，支持被动回复、主动消息和宿主定时通知。\n- 发送图片、语音、视频与文件，支持引用附件读取和 C2C 流式回复。\n- 8 个工具、6 类事件；支持 WebSocket 网关和签名 Webhook。\n\n需要 QQ 机器人账号与相应权限；音频转码需要 FFmpeg。本地媒体工具可读取宿主进程有权访问的普通文件。界面截图使用示例数据。\n\n作者：[leafliber](https://github.com/leafliber)。本项目是独立的社区扩展；名称中的“官方”指 QQ 官方接口，不表示腾讯或 Cortico 官方出品。"
       },
       "en": {
         "displayName": "QQ Official",
-        "description": "QQ Official API events, messaging, media and bot credential binding."
+        "description": "Connect Cortico / Coopanion to the QQ Official Bot API.\n\n- Bind a bot by scanning with QQ; credentials are saved automatically, with connection status shown in the panel. Manual configuration is also available.\n- Receive direct, group and channel events; send replies, proactive messages and host-scheduled notifications.\n- Send images, voice, video and files; read quoted attachments and stream C2C replies.\n- 8 tools and 6 event types, with WebSocket gateway and signed Webhook transports.\n\nRequires a QQ bot account and platform permissions. Audio conversion requires FFmpeg. Local media tools can read regular files accessible to the host process. Screenshots use sample data.\n\nBy [leafliber](https://github.com/leafliber). This is an independent community extension; “Official” refers to QQ’s official API, not endorsement by Tencent or Cortico."
       }
     }
   },
   "files": [
     "src",
+    "assets",
     "README.md",
     "README_zh.md",
     "CHANGELOG.md",
