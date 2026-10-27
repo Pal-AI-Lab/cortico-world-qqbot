@@ -95,6 +95,15 @@ describe('proactive delivery and known targets', () => {
     expect(await tool('send_message', { to: destination, text: 'bad', delivery: 'proactive', reply_to: 'in' })).toMatchObject({ failed: true });
   });
 
+  it('keeps a direct-chat reply anchor for half an hour but a group anchor only for minutes', async () => {
+    const twentyMinutesAgo = new Date(Date.now() - 20 * 60_000).toISOString();
+    await event('C2C_MESSAGE_CREATE', { id: 'dm', author: { user_openid: 'user' }, timestamp: twentyMinutesAgo });
+    await event('GROUP_AT_MESSAGE_CREATE', { id: 'grp', group_openid: 'group', author: { member_openid: 'm' }, timestamp: twentyMinutesAgo });
+    await tool('send_message', { to: destination, text: 'late', delivery: 'auto' });
+    await tool('send_message', { to: 'group:group', text: 'late', delivery: 'auto' });
+    expect(requests.map(r => r.body.msg_id)).toEqual(['dm', undefined]);
+  });
+
   it.each([
     { name: 'immediate responses', tokenMs: 0, messageMs: 0, firstContent: 'first' },
     { name: 'a cold token', tokenMs: 80, messageMs: 0, firstContent: 'first' },

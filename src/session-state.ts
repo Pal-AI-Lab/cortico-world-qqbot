@@ -46,9 +46,12 @@ export class QQSessionState {
   }
   recentReply(target: QQOfficialTarget): string | undefined {
     const s = this.targets.get(targetKey(target));
-    // A conservative 5-minute window also covers the stricter endpoint-specific contract.
+    // QQ documents 60 minutes and 4 replies for C2C, 5 minutes and 5 replies for groups and channels
+    // (bot.q.qq.com/wiki/develop/api-v2/server-inter/message/overview.html). Direct chats were confirmed to
+    // accept a reply 31 minutes later; 30 minutes is the window chosen as safe. Others keep a margin under 5.
     const limit = target.kind === 'c2c' ? 4 : 5;
-    return s?.lastMessageId && s.messageAt && Date.now() - s.messageAt < 285000
+    const window = target.kind === 'c2c' ? 30 * 60_000 : 285_000;
+    return s?.lastMessageId && s.messageAt && Date.now() - s.messageAt < window
       && this.sequence(target, { msg_id: s.lastMessageId }) < limit ? s.lastMessageId : undefined;
   }
   assertProactive(target: QQOfficialTarget): void {

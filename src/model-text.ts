@@ -6,7 +6,7 @@ export const QQOFFICIAL_MODEL_TEXT = {
 
 每条消息一行:\`#编号 [会话 时间] 发言人: 正文\`。私聊和群聊里 QQ 只给对方 OpenID,行里写的是它的尾号，通常没有昵称。[图片] 随消息附上图片，[语音] 在你能听音频时附上录音，下载慢的稍后单独送到;[视频]、[文件] 只是占位，要内容就按编号读取附件。[回复#编号] 指被引用的那条。
 发消息时用 to 填会话地址(见下面的会话列表),或者用 reply_to 填一条消息的编号，会话随之确定。
-QQ 只允许回复用户刚发来的消息：私聊里一条消息 60 分钟内最多回复 4 次，群里 5 分钟内最多 5 次。超出这个范围只能发主动消息，额度很少，对方也可能关闭了接收。回执会写明这条是被动回复还是主动消息。
+QQ 只允许回复用户刚发来的消息：私聊里一条消息 30 分钟内最多回复 4 次，群里 5 分钟内最多 5 次。超出这个范围只能发主动消息，额度很少，对方也可能关闭了接收。回执会写明这条是被动回复还是主动消息。
 发图片或语音用你见过的 log: 句柄、收藏的 mem: 句柄或公网 URL,不能用本机路径;语音会自动转码。
 要让回复在 QQ 里逐字出现，先开启流式回复，再在下一轮直接写给对方的话，不要再另外发送同一段话。
 发送超时或服务端出错时结果未知，不要直接重发。`,
@@ -39,7 +39,7 @@ QQ 只允许回复用户刚发来的消息：私聊里一条消息 60 分钟内�
 
 Each message is one line: \`#n [conversation HH:MM] sender: text\`. In direct and group chats QQ gives only the sender's OpenID; the line shows its tail, usually without a nickname. [image] comes with the picture attached and [voice] with the recording when you can take audio; slow downloads arrive shortly after on their own. [video] and [file] are placeholders: read the attachment by its message number when you need it. [reply to #n] points at the quoted message.
 Address a message with to (see the conversation list below), or give a message number in reply_to and its conversation is used.
-QQ only allows replies to messages users just sent: in a direct chat up to 4 replies within 60 minutes of a message, in a group up to 5 within 5 minutes. Outside that, only proactive messages remain; their quota is small and the recipient may have turned them off. The receipt says whether a message went out as a reply or a proactive message.
+QQ only allows replies to messages users just sent: in a direct chat up to 4 replies within 30 minutes of a message, in a group up to 5 within 5 minutes. Outside that, only proactive messages remain; their quota is small and the recipient may have turned them off. The receipt says whether a message went out as a reply or a proactive message.
 Send images or voice from a log: handle you have seen, a mem: handle you kept, or a public URL; local paths are not accepted. Voice is converted automatically.
 To make a reply appear word by word in QQ, start a streamed reply, then write your words to the recipient in the next round, without sending the same text again.
 After a timeout or server error the result is unknown: do not resend blindly.`,
