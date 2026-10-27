@@ -649,7 +649,8 @@ export class QQOfficialWorld implements World {
   private delivery(destination: QQOfficialTarget, args: JsonObject): JsonObject {
     if (args.fallback !== undefined && typeof args.fallback !== 'boolean') throw new Error('Invalid fallback');
     const anchors = this.anchors(args);
-    const mode = args.delivery ?? (Object.keys(anchors).length ? 'reply' : 'proactive');
+    // Like a person replying in the chat: reuse a still-valid anchor, fall back to a proactive message.
+    const mode = args.delivery ?? (Object.keys(anchors).length ? 'reply' : 'auto');
     if (!['auto', 'reply', 'proactive', 'wakeup'].includes(String(mode))) throw new Error('Invalid delivery');
     if (mode === 'proactive' || mode === 'wakeup') {
       if (Object.keys(anchors).length) throw new Error('Proactive/wakeup delivery cannot include replyTo or eventId');

@@ -9,6 +9,7 @@
 - List known conversations and the bot's QQ name in the environment prompt.
 - Fetch images from the QQ CDN as messages arrive and attach them to the event when the model accepts images; voice without a QQ transcript is converted to WAV and attached when the model accepts audio. Downloads that take longer than 2.5 seconds follow as a `qqofficial.attachment` event. Video and files are still read on request.
 - Keep automatic C2C reply anchors for 30 minutes. QQ documents a 60-minute, 4-reply window for direct chats, and a reply 31 minutes after the message was confirmed on a phone; 30 minutes leaves margin. Groups and channels keep the 5-minute window.
+- Default `delivery` to `auto`: a message without `reply_to` replies to the latest message in that conversation that still accepts a reply, and is sent proactively only when none does. `delivery=proactive` still forces a proactive message.
 
 ## 0.2.3
 

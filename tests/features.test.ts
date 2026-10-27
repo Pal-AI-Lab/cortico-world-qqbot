@@ -95,6 +95,13 @@ describe('proactive delivery and known targets', () => {
     expect(await tool('send_message', { to: destination, text: 'bad', delivery: 'proactive', reply_to: 'in' })).toMatchObject({ failed: true });
   });
 
+  it('replies to the latest open message when the model gives only an address', async () => {
+    await event('C2C_MESSAGE_CREATE', { id: 'open', author: { user_openid: 'user' } });
+    await tool('send_message', { to: destination, text: 'answer' });
+    await tool('send_message', { to: 'c2c:stranger', text: 'hello' });
+    expect(requests.map(r => r.body.msg_id)).toEqual(['open', undefined]);
+  });
+
   it('keeps a direct-chat reply anchor for half an hour but a group anchor only for minutes', async () => {
     const twentyMinutesAgo = new Date(Date.now() - 20 * 60_000).toISOString();
     await event('C2C_MESSAGE_CREATE', { id: 'dm', author: { user_openid: 'user' }, timestamp: twentyMinutesAgo });

@@ -112,7 +112,7 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 | `qqofficial_read_attachment` | 按消息编号和从 1 开始的附件序号读取内容；`quoted=true` 读引用消息里的附件，语音转换为 WAV 后交给 Core。 |
 | `qqofficial_ack_interaction` | 使用 0 至 5 的结果码明确确认平台互动事件。 |
 
-地址写在 `to`；`reply_to` 填消息编号，回复那一条并沿用它的会话，省略 `to`。没有记录的编号按 QQ 消息 ID 原样作为回复依据。回复事件使用 `eventId`，与 `reply_to` 互斥。`delivery` 支持 `reply`、`proactive`、`auto`、`wakeup`：`auto` 在保守的近期窗口和已使用序号范围内选取回复依据，否则主动发送；`wakeup` 仅用于 QQ 单聊，由 QQ 判定唤醒权限。省略 `delivery` 和回复依据时仍为主动发送。已知主动接收关闭或已删除机器人的目标会被本地拒绝，普通被动回复不受这一检查限制。目标状态、发送序号从当前账号的事件存档恢复。
+地址写在 `to`；`reply_to` 填消息编号，回复那一条并沿用它的会话，省略 `to`。没有记录的编号按 QQ 消息 ID 原样作为回复依据。回复事件使用 `eventId`，与 `reply_to` 互斥。`delivery` 支持 `reply`、`proactive`、`auto`、`wakeup`：`auto` 在保守的近期窗口和已使用序号范围内选取回复依据，否则主动发送；`wakeup` 仅用于 QQ 单聊，由 QQ 判定唤醒权限。省略 `delivery` 和回复依据时按 `auto` 处理。已知主动接收关闭或已删除机器人的目标会被本地拒绝，普通被动回复不受这一检查限制。目标状态、发送序号从当前账号的事件存档恢复。
 
 定时通知复用宿主已有的 `alarm_set`、`alarm_list`、`alarm_cancel`；提醒内容保存 `qqofficial_list_targets` 返回的会话地址，唤醒后调用发送工具并指定 `delivery=proactive`。扩展不另起调度器。默认在上次主动发送尝试结束后等待三秒，再发起下一次；被拒绝的请求和降级重试同样受此间隔限制。QQ 的权限、配额和接收方设置仍可能拒绝请求。
 

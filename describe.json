@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "qqofficial_send_message",
-      "description": "发一条 QQ 消息：文字，可以带一张图片(image),或者单独发一条语音(voice)。reply_to 填消息编号，回复那一条，会话随之确定;quote=true 时在 QQ 里显示引用。不填 reply_to 时按主动消息发送;delivery=auto 会自动挑选还能用的回复依据。",
+      "description": "发一条 QQ 消息：文字，可以带一张图片(image),或者单独发一条语音(voice)。reply_to 填消息编号，回复那一条，会话随之确定;quote=true 时在 QQ 里显示引用。不填 reply_to 时自动回复这个会话里还能回复的最近一条，没有就按主动消息发送;delivery=proactive 强制主动消息。",
       "parameters": {
         "type": "object",
         "properties": {
