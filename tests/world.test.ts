@@ -64,6 +64,15 @@ describe('event stream integration', () => {
     expect(await tool('read_attachment', { message })).toMatchObject({ failed: true });
   });
 
+  it('attaches images on arrival only when the model takes them', async () => {
+    const data = { author: { user_openid: 'user' }, content: 'look', attachments: [{ url: 'https://multimedia.nt.qq.com.cn/image.png', content_type: 'image/png' }] };
+    await incoming('C2C_MESSAGE_CREATE', { ...data, id: 'blind' }, 'blind');
+    host.modelFacts.accepts = (mime: string) => mime.startsWith('image/');
+    await incoming('C2C_MESSAGE_CREATE', { ...data, id: 'seeing' }, 'seeing');
+    expect(host.pushes.map(p => p.blobs)).toEqual([undefined, [expect.objectContaining({ mime: 'image/png', bytes: Buffer.from([137, 80, 78, 71]) })]]);
+    expect(host.pushes[1].event.text).toMatch(/^#2 \[私聊 \d\d:\d\d\] 用户user: look \[图片\]$/);
+  });
+
   it.each([
     ['C2C_MESSAGE_CREATE', { author: { user_openid: 'user' } }, { kind: 'c2c', id: 'user' }],
     ['GROUP_AT_MESSAGE_CREATE', { group_openid: 'group' }, { kind: 'group', id: 'group' }],

@@ -4,7 +4,7 @@ export const QQOFFICIAL_MODEL_TEXT = {
   zh: {
     environment: `你在 QQ 上，通过 QQ 官方机器人接口收发消息。
 
-每条消息一行:\`#编号 [会话 时间] 发言人: 正文\`。私聊和群聊里 QQ 只给对方 OpenID,行里写的是它的尾号，通常没有昵称。[图片] 随消息附图;[语音]、[视频]、[文件] 只是占位，要内容就按编号读取附件。[回复#编号] 指被引用的那条。
+每条消息一行:\`#编号 [会话 时间] 发言人: 正文\`。私聊和群聊里 QQ 只给对方 OpenID,行里写的是它的尾号，通常没有昵称。[图片] 随消息附上图片，[语音] 在你能听音频时附上录音，下载慢的稍后单独送到;[视频]、[文件] 只是占位，要内容就按编号读取附件。[回复#编号] 指被引用的那条。
 发消息时用 to 填会话地址(见下面的会话列表),或者用 reply_to 填一条消息的编号，会话随之确定。
 QQ 只允许回复用户刚发来的消息：私聊里一条消息 60 分钟内最多回复 4 次，群里 5 分钟内最多 5 次。超出这个范围只能发主动消息，额度很少，对方也可能关闭了接收。回执会写明这条是被动回复还是主动消息。
 发图片或语音用你见过的 log: 句柄、收藏的 mem: 句柄或公网 URL,不能用本机路径;语音会自动转码。
@@ -31,12 +31,13 @@ QQ 只允许回复用户刚发来的消息：私聊里一条消息 60 分钟内�
     proactiveBlocked: '对方关闭了主动消息',
     attachment: (n: number) => `第 ${n} 个附件`,
     noHistory: '(没有记录)',
+    lateAttachment: (ref: string) => `[#${ref} 的附件]`,
     batchFailed: (n: number, error: string) => `[send failed] 第 ${n} 项:${error}。前面已发出的不要重发。`,
   },
   en: {
     environment: `You are on QQ, sending and receiving through the QQ official bot API.
 
-Each message is one line: \`#n [conversation HH:MM] sender: text\`. In direct and group chats QQ gives only the sender's OpenID; the line shows its tail, usually without a nickname. [image] comes with the picture attached; [voice], [video] and [file] are placeholders: read the attachment by its message number when you need it. [reply to #n] points at the quoted message.
+Each message is one line: \`#n [conversation HH:MM] sender: text\`. In direct and group chats QQ gives only the sender's OpenID; the line shows its tail, usually without a nickname. [image] comes with the picture attached and [voice] with the recording when you can take audio; slow downloads arrive shortly after on their own. [video] and [file] are placeholders: read the attachment by its message number when you need it. [reply to #n] points at the quoted message.
 Address a message with to (see the conversation list below), or give a message number in reply_to and its conversation is used.
 QQ only allows replies to messages users just sent: in a direct chat up to 4 replies within 60 minutes of a message, in a group up to 5 within 5 minutes. Outside that, only proactive messages remain; their quota is small and the recipient may have turned them off. The receipt says whether a message went out as a reply or a proactive message.
 Send images or voice from a log: handle you have seen, a mem: handle you kept, or a public URL; local paths are not accepted. Voice is converted automatically.
@@ -63,6 +64,7 @@ After a timeout or server error the result is unknown: do not resend blindly.`,
     proactiveBlocked: 'proactive messages turned off',
     attachment: (n: number) => `attachment ${n}`,
     noHistory: '(no records)',
+    lateAttachment: (ref: string) => `[attachment of #${ref}]`,
     batchFailed: (n: number, error: string) => `[send failed] item ${n}: ${error}. Do not resend the items already sent.`,
   },
 };

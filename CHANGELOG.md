@@ -7,6 +7,7 @@
 - Render model-facing text in the shape of Cortico's built-in QQ World: one line per message (`#n [conversation HH:MM] sender: text`) with faces by name, quotes, mentions and attachment placeholders; notices, send receipts and history as short lines instead of raw JSON. Original fields stay in `meta.data`.
 - Address tools with `to` (`c2c:<OpenID>` and so on) and short message numbers: `reply_to`, `message` and `before` take `#n`. `send_message` takes `text` plus an optional `image` or `voice`; `history` is now `read_history`; `read_attachment` takes a message number and a 1-based index. Object targets from earlier reminders are still accepted.
 - List known conversations and the bot's QQ name in the environment prompt.
+- Fetch images from the QQ CDN as messages arrive and attach them to the event when the model accepts images; voice without a QQ transcript is converted to WAV and attached when the model accepts audio. Downloads that take longer than 2.5 seconds follow as a `qqofficial.attachment` event. Video and files are still read on request.
 
 ## 0.2.3
 

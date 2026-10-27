@@ -444,6 +444,7 @@ export const QQOFFICIAL_TOOL_SUMMARIES: Record<string, { zh: string; en: string 
 export const QQOFFICIAL_EVENT_DESCRIPTIONS = {
   message: { zh: '收到一条 QQ 消息，渲染成一行可读文本，原始字段留在存档里。', en: 'An incoming QQ message rendered as one readable line; original fields stay in the archive.' },
   notice: { zh: '收到互动、关系变化或其他平台事件。', en: 'An interaction, relationship change or other platform event.' },
+  attachment: { zh: '消息里下载较慢的图片或语音，下载完成后单独送达。', en: 'An image or voice clip from an earlier message, delivered once its slower download finishes.' },
   sent: { zh: '平台接受发送请求的存档回执，不唤醒模型。', en: 'An archived send receipt; does not wake the model.' },
   attempt: { zh: '发送前持久化的序号预留，不唤醒模型。', en: 'A sequence reservation persisted before sending; does not wake the model.' },
   removed: { zh: '平台接受撤回请求的存档回执，不唤醒模型。', en: 'An archived recall receipt; does not wake the model.' },

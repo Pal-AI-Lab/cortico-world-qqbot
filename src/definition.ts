@@ -16,6 +16,7 @@ export function qqOfficialDefinition(options: Pick<QQOfficialWorldOptions, 'mode
       events: [
         { type: 'qqofficial.message', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.message },
         { type: 'qqofficial.notice', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.notice },
+        { type: 'qqofficial.attachment', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.attachment },
         { type: 'qqofficial.sent', tags: ['speak'], description: QQOFFICIAL_EVENT_DESCRIPTIONS.sent },
         { type: 'qqofficial.attempt', description: QQOFFICIAL_EVENT_DESCRIPTIONS.attempt },
         { type: 'qqofficial.removed', description: QQOFFICIAL_EVENT_DESCRIPTIONS.removed },

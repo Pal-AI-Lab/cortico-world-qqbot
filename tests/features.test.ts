@@ -251,6 +251,15 @@ describe('media and auxiliary tools', () => {
     expect('bytes' in blob && Buffer.from(blob.bytes).subarray(0, 4).toString()).toBe('RIFF');
   });
 
+  it('hands incoming voice to an audio-capable model without a tool call', async () => {
+    host.modelFacts.accepts = (mime: string) => mime === 'audio/wav';
+    incomingMedia = await audioToSilk(pcmToWav(new Uint8Array(24000)), { signal: new AbortController().signal, timeoutMs: 5000, ffmpegPath: 'ffmpeg' });
+    await event('C2C_MESSAGE_CREATE', { id: 'voice-in', author: { user_openid: 'user' }, attachments: [{ url: 'https://gchat.qpic.cn/voice', content_type: 'voice' }] });
+    await vi.waitFor(() => expect(host.pushes.flatMap(p => p.blobs ?? [])).toEqual([expect.objectContaining({ mime: 'audio/wav' })]), { timeout: 10000 });
+    const carrier = host.pushes.find(p => p.blobs)!;
+    expect(carrier.event.text).toMatch(carrier.event.type === 'qqofficial.message' ? /用户user: \[语音\]$/ : /^\[#1 的附件\]$/);
+  });
+
   it('executes recall and interaction confirmation tools', async () => {
     await tool('delete_message', { to: destination, message: 'sent' });
     await tool('ack_interaction', { interactionId: 'click', code: 0 });

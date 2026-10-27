@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { basename } from 'node:path';
 import type { Language } from 'cortico/core/language.ts';
-import type { EventEnvelope, OutputTap, ToolDef, ToolOutcome, World, WorldWebUiDecl, WorldHost } from 'cortico/core/types.ts';
+import type { BlobInput, EventEnvelope, OutputTap, ToolDef, ToolOutcome, World, WorldWebUiDecl, WorldHost } from 'cortico/core/types.ts';
 import { nowIso } from 'cortico/core/util.ts';
 import type { WorldContext } from 'cortico/world.ts';
 import { coerceGroupValues, getByPath, setByPath } from 'cortico/core/config-schema.ts';
@@ -23,6 +23,9 @@ import { QQSessionState } from './session-state.ts';
 import { sendWithFallback, waitUntil } from './delivery.ts';
 import { QQReplyStream } from './reply-stream.ts';
 import { address, attachmentsOf, conversationLabel, shortId, renderIncoming, renderNotice, renderSelf, renderText, type RenderText } from './render.ts';
+
+/** How long a message waits for its images before they follow as a separate event; matches the built-in QQ World. */
+const INLINE_WAIT_MS = 2500;
 
 /** A local reference shown as `#ref` on message lines; QQ message ids are too long to repeat in context. */
 interface MessageRef { target: QQOfficialTarget; messageId: string; cursor: number }
@@ -322,8 +325,14 @@ export class QQOfficialWorld implements World {
         text = renderIncoming(incoming.data, { t: this.view, timezone: this.options.context.timezone, ref: extra.ref as string,
           target: incoming.target!, eventType: incoming.eventType, selfId: this.self?.id, refOf: id => this.refByMessage.get(id) }).text;
       } else text = renderNotice(incoming.eventType, incoming.data, incoming.target, this.view);
-      const saved = await this.push(incoming.kind, incoming.target, data, true, extra, text);
+      const media = incoming.kind === 'message' ? await this.inlineMedia(incoming.data) : { ready: [], late: [] };
+      const saved = await this.push(incoming.kind, incoming.target, data, true, extra, text, media.ready);
       if (incoming.kind === 'message') this.remember(extra.ref as string, incoming.target!, incoming.messageId!, saved.cursor);
+      for (const pending of media.late) {
+        void pending.then(blob => blob && this.push('attachment', incoming.target, { messageId: incoming.messageId }, true,
+          { ref: extra.ref }, this.text.lateAttachment(String(extra.ref)), [blob]))
+          .catch(error => this.host?.log.warn('qqofficial.attachment.push_failed', { error: String(error) }));
+      }
       if (key) {
         this.seen.add(key);
         if (this.seen.size > 10000) this.seen.delete(this.seen.values().next().value!);
@@ -335,17 +344,51 @@ export class QQOfficialWorld implements World {
 
   private sender(value?: QQOfficialTarget): string { return value ? `${this.id}.${targetKey(value)}` : this.id; }
 
-  private async push(kind: 'message' | 'notice' | 'sent' | 'attempt' | 'removed' | 'acknowledged', destination: QQOfficialTarget | undefined,
-    data: JsonObject, deliver = false, extra: JsonObject = {}, text?: string): Promise<EventEnvelope> {
+  private async push(kind: 'message' | 'notice' | 'attachment' | 'sent' | 'attempt' | 'removed' | 'acknowledged', destination: QQOfficialTarget | undefined,
+    data: JsonObject, deliver = false, extra: JsonObject = {}, text?: string, blobs: BlobInput[] = []): Promise<EventEnvelope> {
     if (!this.host) throw new Error('World is not running');
     const event = await this.host.pushEvent({
       type: `${this.id}.${kind}`, source: this.id, origin: 'external', ts: nowIso(this.options.context.timezone),
       senderKey: this.sender(destination), ...(kind === 'sent' ? { tags: ['speak'] as const } : {}),
       text: text ?? this.recordLine(kind, destination, data),
       meta: { ...data, ...extra, target: destination, appId: this.appId },
+      ...(blobs.length ? { blobs } : {}),
     }, { deliver, trigger: 'debounce' });
     this.sessions.observe(event);
     return event;
+  }
+
+  /**
+   * Images (and voice, when the model takes audio and QQ gave no transcript) are fetched from the QQ CDN
+   * as the message arrives. What is ready within INLINE_WAIT_MS rides on the message; the rest follows
+   * as its own event so a slow download never holds the callback.
+   */
+  private async inlineMedia(data: JsonObject): Promise<{ ready: BlobInput[]; late: Array<Promise<BlobInput | null>> }> {
+    const facts = this.host!.modelFacts;
+    const wanted = attachmentsOf(data).filter(a => a.url && (a.kind === 'image' ? facts.accepts(a.mime.startsWith('image/') ? a.mime : 'image/png')
+      : a.kind === 'voice' && !a.asr && facts.accepts('audio/wav')));
+    if (!wanted.length) return { ready: [], late: [] };
+    const tasks = wanted.map(async (a): Promise<BlobInput | null> => {
+      try {
+        const media = await readAttachment(a.url, { maxBytes: this.cfg.maxMediaBytes, timeoutMs: this.cfg.timeoutMs,
+          signal: this.abort.signal, testOrigin: this.options.endpoints?.mediaOrigin });
+        if (a.kind === 'voice') {
+          const wav = await audioToWav(media.bytes, { signal: this.abort.signal, timeoutMs: this.cfg.timeoutMs, ffmpegPath: this.cfg.ffmpegPath });
+          return { bytes: Buffer.from(wav), mime: 'audio/wav', name: `voice-${a.index + 1}.wav`, fallbackText: this.view.voice };
+        }
+        return { bytes: media.bytes, mime: media.mime, ...(a.name ? { name: a.name } : {}), fallbackText: this.view.image };
+      } catch (error) {
+        this.host?.log.warn('qqofficial.attachment.fetch_failed', { error: String(error) });
+        return null;
+      }
+    });
+    const waited = Symbol('waited');
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const elapsed = new Promise<typeof waited>(resolve => { timer = setTimeout(() => resolve(waited), INLINE_WAIT_MS); });
+    const results = await Promise.all(tasks.map(task => Promise.race([task, elapsed])));
+    clearTimeout(timer);
+    const ready = results.filter((r): r is BlobInput => r !== waited && r !== null);
+    return { ready, late: tasks.filter((_, i) => results[i] === waited) };
   }
 
   private remember(ref: string, destination: QQOfficialTarget, messageId: string, cursor: number): void {

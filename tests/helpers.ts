@@ -33,12 +33,12 @@ export class TestHost implements WorldHost {
   readonly dataDir = mkdtempSync(join(tmpdir(), 'qqofficial-events-'));
   readonly store = new JsonlEventStore({ dataDir: this.dataDir, run: '20261024-000000', timezone: 'UTC' });
   readonly log = nullLogger();
-  readonly pushes: Array<{ event: EventEnvelope; options?: PushOptions }> = [];
+  readonly pushes: Array<{ event: EventEnvelope; options?: PushOptions; blobs?: Parameters<WorldHost['pushEvent']>[0]['blobs'] }> = [];
   readonly blobs = new Map<string, { bytes: Uint8Array; mime: string }>();
-  modelFacts = { model: () => 'test', accepts: () => false, contextWindow: () => 128000 };
+  modelFacts = { model: () => 'test', accepts: (_mime: string): boolean => false, contextWindow: () => 128000 };
   async pushEvent(event: Parameters<WorldHost['pushEvent']>[0], options?: PushOptions) {
     const saved = this.store.append({ ...event, origin: event.origin ?? 'external', blobs: undefined });
-    this.pushes.push({ event: saved, options });
+    this.pushes.push({ event: saved, options, blobs: event.blobs });
     return saved;
   }
   pushDeferred(): void {}

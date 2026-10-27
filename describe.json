@@ -370,6 +370,14 @@
       }
     },
     {
+      "type": "qqofficial.attachment",
+      "trigger": "debounce",
+      "description": {
+        "zh": "消息里下载较慢的图片或语音，下载完成后单独送达。",
+        "en": "An image or voice clip from an earlier message, delivered once its slower download finishes."
+      }
+    },
+    {
       "type": "qqofficial.sent",
       "tags": [
         "speak"
