@@ -33,6 +33,8 @@ export interface QQOfficialStrings extends QQOfficialConnectionStrings {
   connection: string;
   promptTitle: string;
   promptDescription: string;
+  promptConversations: string;
+  promptIdentity: string;
   credentials: string;
   save: string;
   bind: string;
@@ -67,6 +69,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "连接状态",
     promptTitle: "环境提示词",
     promptDescription: "QQ Official 事件与工具契约。",
+    promptConversations: "QQ 上认识的会话及其地址。",
+    promptIdentity: "机器人在 QQ 上的名字。",
     credentials: "凭证",
     save: "保存凭证",
     bind: "获取绑定链接",
@@ -99,6 +103,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "Connection",
     promptTitle: "Environment prompt",
     promptDescription: "QQ Official event and tool contracts.",
+    promptConversations: "Known QQ conversations and their addresses.",
+    promptIdentity: "The bot's name on QQ.",
     credentials: "Credentials",
     save: "Save credentials",
     bind: "Get binding link",
@@ -131,6 +137,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "連線狀態",
     promptTitle: "環境提示詞",
     promptDescription: "QQ Official 事件與工具契約。",
+    promptConversations: "QQ 上認識的會話及其位址。",
+    promptIdentity: "機器人在 QQ 上的名字。",
     credentials: "憑證",
     save: "儲存憑證",
     bind: "取得綁定連結",
@@ -163,6 +171,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "接続状態",
     promptTitle: "環境プロンプト",
     promptDescription: "QQ Official のイベントとツールの契約。",
+    promptConversations: "QQ で知っている会話とそのアドレス。",
+    promptIdentity: "QQ でのボットの名前。",
     credentials: "認証情報",
     save: "認証情報を保存",
     bind: "連携リンクを取得",
@@ -195,6 +205,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "연결 상태",
     promptTitle: "환경 프롬프트",
     promptDescription: "QQ Official 이벤트 및 도구 계약.",
+    promptConversations: "QQ에서 알고 있는 대화와 그 주소.",
+    promptIdentity: "QQ에서 봇의 이름.",
     credentials: "인증 정보",
     save: "인증 정보 저장",
     bind: "연결 링크 받기",
@@ -227,6 +239,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "Connexion",
     promptTitle: "Instruction d’environnement",
     promptDescription: "Contrats des événements et outils QQ Official.",
+    promptConversations: "Conversations QQ connues et leurs adresses.",
+    promptIdentity: "Nom du bot sur QQ.",
     credentials: "Identifiants",
     save: "Enregistrer les identifiants",
     bind: "Obtenir le lien d’association",
@@ -259,6 +273,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "Verbindung",
     promptTitle: "Umgebungsanweisung",
     promptDescription: "Ereignis- und Werkzeugverträge für QQ Official.",
+    promptConversations: "Bekannte QQ-Unterhaltungen und ihre Adressen.",
+    promptIdentity: "Name des Bots auf QQ.",
     credentials: "Zugangsdaten",
     save: "Zugangsdaten speichern",
     bind: "Verknüpfungslink abrufen",
@@ -291,6 +307,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "Conexión",
     promptTitle: "Instrucción del entorno",
     promptDescription: "Contratos de eventos y herramientas de QQ Official.",
+    promptConversations: "Conversaciones de QQ conocidas y sus direcciones.",
+    promptIdentity: "Nombre del bot en QQ.",
     credentials: "Credenciales",
     save: "Guardar credenciales",
     bind: "Obtener enlace de vinculación",
@@ -323,6 +341,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "Conexão",
     promptTitle: "Instrução do ambiente",
     promptDescription: "Contratos de eventos e ferramentas do QQ Official.",
+    promptConversations: "Conversas do QQ conhecidas e seus endereços.",
+    promptIdentity: "Nome do bot no QQ.",
     credentials: "Credenciais",
     save: "Salvar credenciais",
     bind: "Obter link de vinculação",
@@ -355,6 +375,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "Connessione",
     promptTitle: "Istruzione di ambiente",
     promptDescription: "Contratti di eventi e strumenti QQ Official.",
+    promptConversations: "Conversazioni QQ note e i loro indirizzi.",
+    promptIdentity: "Nome del bot su QQ.",
     credentials: "Credenziali",
     save: "Salva credenziali",
     bind: "Ottieni link di associazione",
@@ -387,6 +409,8 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     connection: "Подключение",
     promptTitle: "Инструкция окружения",
     promptDescription: "Контракты событий и инструментов QQ Official.",
+    promptConversations: "Известные беседы QQ и их адреса.",
+    promptIdentity: "Имя бота в QQ.",
     credentials: "Учётные данные",
     save: "Сохранить учётные данные",
     bind: "Получить ссылку привязки",
@@ -407,18 +431,18 @@ export function qqOfficialText(language: Language = 'zh'): QQOfficialStrings { r
 
 
 export const QQOFFICIAL_TOOL_SUMMARIES: Record<string, { zh: string; en: string }> = {
-  qqofficial_send_message: { zh: '发送文本或 Markdown 消息。', en: 'Sends text or Markdown messages.' },
-  qqofficial_send_media: { zh: '发送图片、语音、视频或文件。', en: 'Sends images, voice, video or files.' },
+  qqofficial_send_message: { zh: '发送文字，可带一张图片或单独一条语音。', en: 'Sends text, optionally with one image, or a voice bar.' },
+  qqofficial_send_media: { zh: '发送视频、文件或多张图片。', en: 'Sends video, files or several images.' },
   qqofficial_stream_message: { zh: '发送流式分片或自动转发下一轮回复正文。', en: 'Sends stream parts or forwards the next public reply.' },
   qqofficial_delete_message: { zh: '撤回机器人发送的消息。', en: 'Recalls messages sent by the bot.' },
-  qqofficial_history: { zh: '读取当前机器人在 Core 中保存的事件历史。', en: 'Reads this bot’s event history stored by Core.' },
+  qqofficial_read_history: { zh: '读取 QQ 会话的历史消息。', en: 'Reads past QQ messages.' },
   qqofficial_read_attachment: { zh: '读取已保存消息的 QQ CDN 附件。', en: 'Reads QQ CDN attachments from stored messages.' },
   qqofficial_ack_interaction: { zh: '确认平台互动事件。', en: 'Acknowledges platform interactions.' },
   qqofficial_list_targets: { zh: '查询已知 QQ 会话及主动接收状态。', en: 'Lists known QQ targets and proactive reception state.' },
 };
 
 export const QQOFFICIAL_EVENT_DESCRIPTIONS = {
-  message: { zh: '收到 QQ 消息，保留正文、会话和原始字段。', en: 'An incoming QQ message, with its target and original fields.' },
+  message: { zh: '收到一条 QQ 消息，渲染成一行可读文本，原始字段留在存档里。', en: 'An incoming QQ message rendered as one readable line; original fields stay in the archive.' },
   notice: { zh: '收到互动、关系变化或其他平台事件。', en: 'An interaction, relationship change or other platform event.' },
   sent: { zh: '平台接受发送请求的存档回执，不唤醒模型。', en: 'An archived send receipt; does not wake the model.' },
   attempt: { zh: '发送前持久化的序号预留，不唤醒模型。', en: 'A sequence reservation persisted before sending; does not wake the model.' },

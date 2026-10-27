@@ -76,7 +76,17 @@ For Webhooks, set `transport` to `webhook` and configure QQ's callback URL to re
 
 Incoming messages become `qqofficial.message`; interactions, relationship changes and other dispatches become `qqofficial.notice`. Both use `origin: external` and `trigger: debounce`. Core stores and batches them; the Persona decides whether to act. Raw content, mentions, references, attachments and `message_scene` remain in `meta.data`.
 
-Each message carries a routing `target`:
+The text that reaches the model has the same shape as Cortico's built-in QQ World, one line per message:
+
+```text
+#12 [DM 21:32] user A1B2C3: [reply to #11] there? [emoji:呲牙] [image]
+#13 [DM 21:33] you: here
+[system] DM user A1B2C3 turned off your proactive messages
+```
+
+`#n` is a short number the World assigns to a QQ message; tool arguments `reply_to`, `message` and `before` take it. Direct and group chats carry only OpenIDs, so lines show their tail; channels show nicknames. Faces render by name, quotes of recorded messages as `[reply to #n]`, unrecorded quotes with their text. Attachments show as `[image]`, `[voice]`, `[video name]` or `[file name]`. Send receipts read `[sent #n → conversation, reply]` and state whether the message went out as a reply, proactive or wakeup message, and any downgrade. The environment prompt lists known conversations and their addresses.
+
+Each message carries a routing `target`; tools write addresses as `c2c:<OpenID>`, `group:<group OpenID>`, `channel:<channel ID>` or `dms:<guild_id>`:
 
 | `target.kind` | `target.id` |
 | --- | --- |
@@ -93,18 +103,18 @@ Outgoing sequence reservations (`qqofficial.attempt`) and platform receipts (`qq
 
 | Tool | Contract |
 | --- | --- |
-| `qqofficial_send_message` | Text or Markdown, optional message reference and native keyboard object. |
-| `qqofficial_send_media` | Exactly one public URL or host-managed `log:`/`mem:` attachment; local paths are rejected; types 1 image, 2 video, 3 voice, 4 file. `items` sends up to eight sequentially. |
+| `qqofficial_send_message` | Text, optionally with one `image` or a `voice` bar on its own, each a `log:`/`mem:` handle or public URL; `quote=true` shows the quote; optional native keyboard object. |
+| `qqofficial_send_media` | Video, files or several images: exactly one public URL or host-managed `log:`/`mem:` attachment; local paths are rejected; types 1 image, 2 video, 3 voice, 4 file. `items` sends up to eight sequentially. |
 | `qqofficial_stream_message` | `followModel=true` forwards the next model round’s public reply to a selected target; also supports manual C2C parts. |
 | `qqofficial_delete_message` | Recall a bot message in the given target. |
 | `qqofficial_list_targets` | Known targets, recent reply anchors and proactive reception state for this AppID. |
-| `qqofficial_history` | Stored World history for this AppID, optionally filtered by target and cursor. |
-| `qqofficial_read_attachment` | Read by event cursor and attachment index; optional `quotedIndex` selects a quoted message. Voice becomes WAV for Core. |
+| `qqofficial_read_history` | Message history for this AppID as lines, optionally for one conversation (`to`); `before` takes a message number. |
+| `qqofficial_read_attachment` | Read by message number and 1-based attachment index; `quoted=true` reads from the quoted message. Voice becomes WAV for Core. |
 | `qqofficial_ack_interaction` | Explicit platform acknowledgement with a result code from 0 to 5. |
 
-Pass `replyTo` or `eventId`, exclusively. `delivery` supports `reply`, `proactive`, `auto` and `wakeup`. `auto` chooses a recent anchor within a conservative age and sequence budget, then uses proactive delivery when none is available. `wakeup` requires C2C and platform permission. Omitting both anchors and `delivery` remains proactive. Known opt-outs or removed-bot relationships block proactive sends locally; passive replies remain possible. Target state and sequence reservations are restored from this account’s archive.
+Address with `to`; `reply_to` takes a message number, replies to it and uses its conversation, so `to` can be omitted. An unrecorded number is passed to QQ as a message ID. `eventId` replies to an event and excludes `reply_to`. `delivery` supports `reply`, `proactive`, `auto` and `wakeup`. `auto` chooses a recent anchor within a conservative age and sequence budget, then uses proactive delivery when none is available. `wakeup` requires C2C and platform permission. Omitting both anchors and `delivery` remains proactive. Known opt-outs or removed-bot relationships block proactive sends locally; passive replies remain possible. Target state and sequence reservations are restored from this account’s archive.
 
-Scheduled notifications use the host’s existing `alarm_set`, `alarm_list` and `alarm_cancel`. Preserve the exact target from `qqofficial_list_targets` in the reminder, then send with `delivery=proactive` when awakened. The extension adds no scheduler. By default, each proactive attempt waits three seconds after the previous attempt completes, including rejected attempts and fallback retries. QQ permissions, quotas and recipient settings still apply.
+Scheduled notifications use the host’s existing `alarm_set`, `alarm_list` and `alarm_cancel`. Preserve the conversation address from `qqofficial_list_targets` in the reminder, then send with `delivery=proactive` when awakened. The extension adds no scheduler. By default, each proactive attempt waits three seconds after the previous attempt completes, including rejected attempts and fallback retries. QQ permissions, quotas and recipient settings still apply.
 
 `followModel=true` explicitly selects a target and forwards only the next round’s public text, excluding reasoning and tool arguments. Anchored C2C replies stream at the configured interval; proactive notifications, groups, channels and guild DMs buffer into ordinary messages. Explicit streaming endpoint 404/405 responses also enable buffered delivery. Round end, another tool call, cancellation, conversation changes and idle timeouts close the reply. Manual C2C parts use `content`, reuse the returned `streamId`, and retain the target, format, anchor and sequence; `finish` defaults to true. Partial failures never replay the complete reply. Uncertain continuations remain blocked after process restart.
 

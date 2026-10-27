@@ -22,6 +22,13 @@ import { QQUploader, MEDIA_LIMITS } from './upload.ts';
 import { QQSessionState } from './session-state.ts';
 import { sendWithFallback, waitUntil } from './delivery.ts';
 import { QQReplyStream } from './reply-stream.ts';
+import { address, attachmentsOf, conversationLabel, shortId, renderIncoming, renderNotice, renderSelf, renderText, type RenderText } from './render.ts';
+
+/** A local reference shown as `#ref` on message lines; QQ message ids are too long to repeat in context. */
+interface MessageRef { target: QQOfficialTarget; messageId: string; cursor: number }
+
+/** What a successful send returns before it is rendered for the model. */
+interface SentResult { receipt: JsonObject }
 
 interface StreamState {
   target: QQOfficialTarget; streamId: string; format: string; anchors: JsonObject; sequence: number; index: number; at: number; uncertain?: boolean;
@@ -60,20 +67,122 @@ export class QQOfficialWorld implements World {
   private modelRoundOpen = false;
   private replyWaitForRound = false;
   private lastProactiveAt = 0;
+  private refs = new Map<string, MessageRef>();
+  private refByMessage = new Map<string, string>();
+  private nextRef = 1;
+  private self?: { id: string; name: string };
 
   constructor(private readonly options: QQOfficialWorldOptions) {
     this.binding = new QQOfficialBinding(options.context.cfg.timeoutMs, options.endpoints?.bindingUrl);
   }
 
   private get cfg() { return this.options.context.cfg; }
-  private get text() { return QQOFFICIAL_MODEL_TEXT[this.options.modelLanguage?.() ?? this.cfg.modelLanguage]; }
+  private get language(): ModelLanguage { return this.options.modelLanguage?.() ?? this.cfg.modelLanguage; }
+  private get text() { return QQOFFICIAL_MODEL_TEXT[this.language]; }
+  private get view(): RenderText { return renderText(this.language); }
 
-  envPromptVars(): Record<string, string> { return { 'qqofficial.environment': this.text.environment }; }
+  /** Conversations keep first-seen order so the system prefix only changes when a new one appears. */
+  envPromptVars(): Record<string, string> {
+    const lines = [...this.sessions.targets.values()].map(s => `- ${this.describeTarget(s.target, s.label)}(${address(s.target)})`);
+    return {
+      'qqofficial.environment': this.text.environment,
+      'qqofficial.conversations': lines.length ? `${this.text.conversations}\n${lines.join('\n')}` : this.text.noConversations,
+      'qqofficial.identity': this.self?.name ? this.text.identity(this.self.name) : '',
+    };
+  }
+
+  private describeTarget(target: QQOfficialTarget, label?: string): string {
+    const t = this.view;
+    const where = conversationLabel(target, t);
+    if (label) return `${where} ${label}`;
+    return target.kind === 'c2c' ? `${where} ${t.user(shortId(target.id))}` : where;
+  }
 
   tools(): ToolDef[] {
-    return qqOfficialTools(this.options.modelLanguage?.() ?? this.cfg.modelLanguage, (action, args, signal) => {
-      return this.enqueue(() => this.execute(action, args, signal));
+    return qqOfficialTools(this.language, (action, args, signal) => this.enqueue(async () => {
+      const internal = this.fromModel(action, args);
+      // An image or voice bar given to the send tool goes through the media path.
+      const run = internal.mediaSend ? 'media' : action;
+      delete internal.mediaSend;
+      return this.present(run, await this.execute(run, internal, signal));
+    }));
+  }
+
+  /** Model-facing arguments follow Cortico's QQ World: `to` addresses, `#ref` message references and `text`. */
+  private fromModel(action: QQOfficialAction, args: JsonObject): JsonObject {
+    const out: JsonObject = { ...args };
+    delete out.to; delete out.reply_to; delete out.text; delete out.image; delete out.voice; delete out.message; delete out.quoted; delete out.before; delete out.quote;
+    if (Array.isArray(args.items)) out.items = args.items.map(item => {
+      const { text, ...rest } = object(item);
+      return text === undefined ? rest : { ...rest, content: text };
     });
+    const reference = (value: unknown): MessageRef | { messageId: string } => {
+      const raw = string(value, 'message reference').trim().replace(/^#/, '');
+      return this.refs.get(raw) ?? { messageId: raw };
+    };
+    let destination = args.to !== undefined ? this.parseAddress(args.to) : undefined;
+    if (args.reply_to !== undefined && args.reply_to !== '') {
+      const ref = reference(args.reply_to);
+      if ('target' in ref) {
+        if (destination && targetKey(destination) !== targetKey(ref.target)) throw new Error(`#${String(args.reply_to).replace(/^#/, '')} is not in ${address(destination)}`);
+        destination ??= ref.target;
+      }
+      out.replyTo = ref.messageId;
+      if (args.quote === true) out.referenceId = ref.messageId;
+    }
+    if (args.text !== undefined) out.content = args.text;
+    if (action === 'send' && (args.image !== undefined || args.voice !== undefined)) {
+      if (args.image !== undefined && args.voice !== undefined) throw new Error('Send an image or a voice bar, not both');
+      const source = string(args.image ?? args.voice, args.image !== undefined ? 'image' : 'voice').trim();
+      Object.assign(out, /^(log|mem):/.test(source) ? { blob: source } : { url: source }, { fileType: args.image !== undefined ? 1 : 3, mediaSend: true });
+    }
+    if (action === 'remove' || action === 'read') {
+      const ref = reference(args.message);
+      if ('target' in ref) { destination ??= ref.target; if (action === 'read') out.cursor = ref.cursor; }
+      else if (action === 'read') throw new Error(`No recorded QQ message #${String(args.message).replace(/^#/, '')}`);
+      out.messageId = ref.messageId;
+      if (action === 'read') {
+        out.index = args.index === undefined ? 0 : integer(args.index, 'index', 1, 100) - 1;
+        if (args.quoted === true) out.quotedIndex = 0;
+      }
+    }
+    if (action === 'history' && args.before !== undefined) {
+      const ref = reference(args.before);
+      if (!('target' in ref)) throw new Error(`No recorded QQ message #${String(args.before).replace(/^#/, '')}`);
+      out.beforeCursor = ref.cursor;
+    }
+    if (destination) out.target = destination;
+    else if (!['history', 'targets', 'interaction', 'read'].includes(action)) {
+      throw new Error('Specify a recipient with to, or quote a recorded message with reply_to');
+    }
+    return out;
+  }
+
+  /** Accepts `kind:id`; the object form is what earlier versions told the model to store in reminders. */
+  private parseAddress(value: unknown): QQOfficialTarget {
+    if (value && typeof value === 'object') return target(value);
+    const match = /^(c2c|group|channel|dms):(.+)$/.exec(string(value, 'to').trim());
+    if (!match) throw new Error(`"${String(value)}" is not a QQ address; use c2c:<OpenID>, group:<group OpenID>, channel:<id> or dms:<id>`);
+    return { kind: match[1] as QQOfficialTarget['kind'], id: match[2] };
+  }
+
+  /** Renders tool results as short lines; JSON stays in the event archive. */
+  private present(action: QQOfficialAction, result: string | ToolOutcome | SentResult | SentResult[]): string | ToolOutcome {
+    if (Array.isArray(result)) return result.map(r => this.receiptLine(r.receipt)).join('\n');
+    if (typeof result === 'object' && 'receipt' in result) {
+      if (action === 'stream' && result.receipt.finish === false) return `${this.receiptLine(result.receipt)} streamId=${String(result.receipt.streamId)}`;
+      return this.receiptLine(result.receipt);
+    }
+    return result;
+  }
+
+  private receiptLine(receipt: JsonObject): string {
+    const t = this.view;
+    const destination = receipt.target as QQOfficialTarget;
+    const ref = typeof receipt.messageId === 'string' ? this.refByMessage.get(receipt.messageId) : undefined;
+    const mode = receipt.is_wakeup ? 'wakeup' : receipt.msg_id || receipt.event_id ? 'reply' : 'proactive';
+    const notes = [t.modes[mode], ...((receipt.fallbacks as string[] | undefined) ?? []).map(f => t.fallback[f]).filter(Boolean)];
+    return `[sent${ref ? ` #${ref}` : ''} → ${this.describeTarget(destination, this.sessions.targets.get(targetKey(destination))?.label)}, ${notes.join(', ')}]`;
   }
 
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {
@@ -129,9 +238,11 @@ export class QQOfficialWorld implements World {
     this.abort = new AbortController();
     const saved = host.store.range({ source: this.id });
     this.sessions = new QQSessionState(); this.streams.clear(); this.lastProactiveAt = 0;
+    this.refs.clear(); this.refByMessage.clear(); this.nextRef = 1;
     for (const event of saved) {
       if (event.meta?.appId !== this.appId) continue;
       this.sessions.observe(event);
+      if (typeof event.meta.ref === 'string') this.remember(event.meta.ref, event.meta.target as QQOfficialTarget, String(event.meta.messageId), event.cursor);
       if (event.type === `${this.id}.attempt` && event.meta.streamId) {
         const state = this.streams.get(this.streamKey(event.meta.target as QQOfficialTarget, String(event.meta.streamId)));
         if (state) state.uncertain = true;
@@ -160,6 +271,7 @@ export class QQOfficialWorld implements World {
           client: this.client, intents: this.cfg.intents, reconnectMs: this.cfg.reconnectMs,
           maxReconnectMs: this.cfg.maxReconnectMs, timeoutMs: this.cfg.timeoutMs,
           onEvent: (event) => this.receive(event), onState: (state, detail) => this.setState(state, detail),
+          onReady: (user) => { if (typeof user.id === 'string') this.self = { id: user.id, name: typeof user.username === 'string' ? user.username : '' }; },
         });
         this.gateway.start();
       } else {
@@ -203,7 +315,15 @@ export class QQOfficialWorld implements World {
       const incoming = normalize(event);
       if (incoming.key && this.seen.has(incoming.key)) return;
       const { key, ...data } = incoming;
-      await this.push(incoming.kind, incoming.target, data, true, key ? { dedupKey: key } : {});
+      const extra: JsonObject = key ? { dedupKey: key } : {};
+      let text: string;
+      if (incoming.kind === 'message') {
+        extra.ref = String(this.nextRef);
+        text = renderIncoming(incoming.data, { t: this.view, timezone: this.options.context.timezone, ref: extra.ref as string,
+          target: incoming.target!, eventType: incoming.eventType, selfId: this.self?.id, refOf: id => this.refByMessage.get(id) }).text;
+      } else text = renderNotice(incoming.eventType, incoming.data, incoming.target, this.view);
+      const saved = await this.push(incoming.kind, incoming.target, data, true, extra, text);
+      if (incoming.kind === 'message') this.remember(extra.ref as string, incoming.target!, incoming.messageId!, saved.cursor);
       if (key) {
         this.seen.add(key);
         if (this.seen.size > 10000) this.seen.delete(this.seen.values().next().value!);
@@ -216,16 +336,45 @@ export class QQOfficialWorld implements World {
   private sender(value?: QQOfficialTarget): string { return value ? `${this.id}.${targetKey(value)}` : this.id; }
 
   private async push(kind: 'message' | 'notice' | 'sent' | 'attempt' | 'removed' | 'acknowledged', destination: QQOfficialTarget | undefined,
-    data: JsonObject, deliver = false, extra: JsonObject = {}): Promise<EventEnvelope> {
+    data: JsonObject, deliver = false, extra: JsonObject = {}, text?: string): Promise<EventEnvelope> {
     if (!this.host) throw new Error('World is not running');
     const event = await this.host.pushEvent({
       type: `${this.id}.${kind}`, source: this.id, origin: 'external', ts: nowIso(this.options.context.timezone),
       senderKey: this.sender(destination), ...(kind === 'sent' ? { tags: ['speak'] as const } : {}),
-      text: `${this.text[kind]}\n${JSON.stringify(data)}`,
+      text: text ?? this.recordLine(kind, destination, data),
       meta: { ...data, ...extra, target: destination, appId: this.appId },
     }, { deliver, trigger: 'debounce' });
     this.sessions.observe(event);
     return event;
+  }
+
+  private remember(ref: string, destination: QQOfficialTarget, messageId: string, cursor: number): void {
+    this.refs.set(ref, { target: destination, messageId, cursor });
+    if (!this.refByMessage.has(messageId)) this.refByMessage.set(messageId, ref);
+    this.nextRef = Math.max(this.nextRef, Number(ref) + 1);
+  }
+
+  /** Archive-only records the model meets in history: one short line each. */
+  private recordLine(kind: string, destination: QQOfficialTarget | undefined, data: JsonObject): string {
+    const t = this.view;
+    const where = destination ? conversationLabel(destination, t) : '';
+    if (kind === 'notice') return renderNotice(String(data.eventType ?? ''), data, destination, t);
+    if (kind === 'attempt') return `${t.system} ${this.text.attempt} → ${where} msg_seq=${String(data.msg_seq)}`;
+    if (kind === 'removed') {
+      const ref = this.refByMessage.get(String(data.messageId));
+      return `${t.system} ${this.text.removed} ${ref ? `#${ref}` : String(data.messageId)}`;
+    }
+    return `${t.system} ${this.text.acknowledged} ${String(data.interactionId)} code=${String(data.code)}`;
+  }
+
+  /** The bot's own message line, with a placeholder for media it carried. */
+  private sentLine(receipt: JsonObject, ref: string): string {
+    const t = this.view;
+    const request = (receipt.request ?? {}) as JsonObject;
+    const markdown = request.markdown as JsonObject | undefined;
+    const text = [request.content, markdown?.content, request.content_raw].find(v => typeof v === 'string' && v.trim()) as string | undefined;
+    const media = receipt.fileType === undefined ? '' : ({ 1: t.image, 2: t.video(''), 3: t.voice, 4: t.file(String(receipt.fileName ?? '')) } as Record<number, string>)[Number(receipt.fileType)];
+    return renderSelf(ref, receipt.target as QQOfficialTarget, [text?.trim(), media].filter(Boolean).join(' '), this.options.context.timezone, t);
   }
 
   private anchors(args: JsonObject): JsonObject {
@@ -242,11 +391,15 @@ export class QQOfficialWorld implements World {
     return sequence;
   }
 
-  private async execute(action: QQOfficialAction, args: JsonObject, signal?: AbortSignal): Promise<string | ToolOutcome> {
+  private async execute(action: QQOfficialAction, args: JsonObject, signal?: AbortSignal): Promise<string | ToolOutcome | SentResult | SentResult[]> {
     if (!this.host || !this.client) throw new Error('World is not running');
     const combined = AbortSignal.any([this.abort.signal, ...signal ? [signal] : []]);
     combined.throwIfAborted();
-    if (action === 'targets') return JSON.stringify(this.sessions.list(args.limit === undefined ? 30 : integer(args.limit, 'limit', 1, 100)));
+    if (action === 'targets') {
+      const listed = this.sessions.list(args.limit === undefined ? 30 : integer(args.limit, 'limit', 1, 100));
+      if (!listed.length) return this.text.noConversations;
+      return listed.map(s => `- ${this.describeTarget(s.target, s.label)}(${address(s.target)}) ${s.replyAvailable ? this.text.canReply : this.text.noReply}${s.proactive === 'blocked' ? `, ${this.text.proactiveBlocked}` : ''}`).join('\n');
+    }
     if (action === 'read') {
       const cursor = integer(args.cursor, 'cursor', 1, Number.MAX_SAFE_INTEGER);
       const index = integer(args.index, 'index', 0, Number.MAX_SAFE_INTEGER);
@@ -268,7 +421,7 @@ export class QQOfficialWorld implements World {
         media.bytes = Buffer.from(await audioToWav(media.bytes, { signal: combined, timeoutMs: this.cfg.timeoutMs, ffmpegPath: this.cfg.ffmpegPath }));
         media.mime = 'audio/wav';
       }
-      const text = JSON.stringify({ cursor, index, messageId: event.meta.messageId, mime: media.mime, bytes: media.bytes.byteLength });
+      const text = `[#${String(event.meta.ref ?? event.meta.messageId)} ${this.text.attachment(index + 1)} ${media.mime} ${Math.ceil(media.bytes.byteLength / 1024)} KB]`;
       return { text, blobs: [{ ...media, ...(typeof attachment.filename === 'string' ? { name: media.mime === 'audio/wav' ? attachment.filename.replace(/\.[^.]*$/, '') + '.wav' : attachment.filename } : {}), fallbackText: text }] };
     }
     if (action === 'history') {
@@ -276,14 +429,15 @@ export class QQOfficialWorld implements World {
       const before = args.beforeCursor === undefined ? undefined : integer(args.beforeCursor, 'beforeCursor', 1, Number.MAX_SAFE_INTEGER) - 1;
       const destination = args.target === undefined ? undefined : target(args.target);
       const events = this.host.store.range({ source: this.id, ...(destination ? { senderKey: this.sender(destination) } : {}), toCursor: before });
-      return JSON.stringify(events.filter((e) => e.meta?.appId === this.appId && e.type !== `${this.id}.attempt`).slice(-limit));
+      const lines = events.filter((e) => e.meta?.appId === this.appId && e.type !== `${this.id}.attempt`).slice(-limit).map(e => e.text);
+      return lines.length ? lines.join('\n') : this.text.noHistory;
     }
     if (action === 'interaction') {
       const id = string(args.interactionId, 'interactionId');
       const code = integer(args.code, 'code', 0, 5);
       const result = await this.client.request('PUT', `/interactions/${encodeURIComponent(id)}`, { code }, combined);
       await this.push('acknowledged', undefined, { interactionId: id, code, result });
-      return JSON.stringify(result);
+      return `[${this.text.acknowledged} ${id} code=${code}]`;
     }
     const destination = target(args.target);
     if (action === 'stream' && args.followModel === true) {
@@ -294,18 +448,22 @@ export class QQOfficialWorld implements World {
       if (!Array.isArray(args.items) || !args.items.length || args.items.length > 8 || ['url', 'blob', 'path', 'fileType'].some(k => args[k] !== undefined)) throw new Error('Supply 1–8 items or one media source');
       const items = args.items.map(item => object(item));
       for (const item of items) this.validateMedia(item);
-      const sent: unknown[] = [];
+      const sent: SentResult[] = [];
       for (let index = 0; index < items.length; index++) {
-        try { sent.push(await this.execute('media', { ...args, ...items[index], items: undefined }, combined)); }
-        catch (error) { return { failed: true, text: JSON.stringify({ sent, failedIndex: index, error: error instanceof Error ? error.message : String(error), instruction: 'Do not resend the already accepted items' }) }; }
+        try { sent.push(await this.execute('media', { ...args, ...items[index], items: undefined }, combined) as SentResult); }
+        catch (error) {
+          const lines = [...sent.map(r => this.receiptLine(r.receipt)), this.text.batchFailed(index + 1, error instanceof Error ? error.message : String(error))];
+          return { failed: true, text: lines.join('\n') };
+        }
       }
-      return JSON.stringify({ sent });
+      return sent;
     }
     if (action === 'remove') {
       const id = string(args.messageId, 'messageId');
       const result = await this.client.request('DELETE', `${route(destination)}/messages/${encodeURIComponent(id)}`, undefined, combined);
       await this.push('removed', destination, { messageId: id, result });
-      return JSON.stringify(result);
+      const ref = this.refByMessage.get(id);
+      return `[${this.text.removed} ${ref ? `#${ref}` : id}]`;
     }
     let anchors = this.delivery(destination, args);
     if (!anchors.msg_id && !anchors.event_id && args.streamId === undefined) this.sessions.assertProactive(destination);
@@ -424,11 +582,16 @@ export class QQOfficialWorld implements World {
     sequence = typeof payload.msg_seq === 'number' ? payload.msg_seq : sequence;
     const messageId = typeof result.id === 'string' ? result.id : undefined;
     if (action === 'stream') { streamData.streamId = string(result.id, 'stream response id'); streamData.format = payload.content_type; }
-    const receipt = { target: destination, ...anchors, msg_seq: sequence, ...streamData,
-      ...(prior ? { previousStreamId: prior.streamId } : {}), messageId, request: payload, result, fallbacks: sent.fallbacks };
-    await this.push('sent', destination, receipt);
+    const receipt: JsonObject = { target: destination, ...anchors, msg_seq: sequence, ...streamData,
+      ...(prior ? { previousStreamId: prior.streamId } : {}), messageId, request: payload, result, fallbacks: sent.fallbacks,
+      ...(action === 'media' ? { fileType: args.fileType, ...(args.fileName !== undefined ? { fileName: basename(String(args.fileName)) } : {}) } : {}) };
+    // Stream parts share one message id, so only the first part takes a new reference.
+    const known = messageId ? this.refByMessage.get(messageId) : undefined;
+    const ref = messageId ? known ?? String(this.nextRef) : '';
+    const saved = await this.push('sent', destination, receipt, false, ref ? { ref } : {}, this.sentLine(receipt, ref));
+    if (messageId && !known) this.remember(ref, destination, messageId, saved.cursor);
     this.rememberStream(receipt, Date.now());
-    return `${this.text.sent}\n${JSON.stringify(receipt)}`;
+    return { receipt };
   }
 
   private validateMedia(args: JsonObject): number {
@@ -520,7 +683,7 @@ export class QQOfficialWorld implements World {
           if (finish && content) await this.enqueue(() => this.execute('send', { ...options, content }));
           return;
         }
-        let result: string | ToolOutcome;
+        let result: string | ToolOutcome | SentResult | SentResult[];
         try { result = await this.enqueue(() => this.execute('stream', streamId
           ? { target: destination, streamId, content: delta, finish }
           : { ...options, content: delta, finish })); }
@@ -534,8 +697,7 @@ export class QQOfficialWorld implements World {
           }
           throw error;
         }
-        const receipt = JSON.parse(String(result).slice(String(result).indexOf('\n') + 1)) as JsonObject;
-        streamId = String(receipt.streamId);
+        streamId = String((result as SentResult).receipt.streamId);
       },
       error: error => {
         this.host?.log.warn('qqofficial.stream.failed', { error: String(error) });
@@ -601,7 +763,9 @@ export class QQOfficialWorld implements World {
       },
       promptDocs: [{ key: 'worlds.qqofficial.envPrompt', title: t.promptTitle, description: t.promptDescription,
         role: 'envPrompt', path: fileURLToPath(new URL('./ENV_PROMPT.md', import.meta.url)),
-        vars: [{ name: 'qqofficial.environment', description: t.promptDescription, multiline: true }] }],
+        vars: [{ name: 'qqofficial.environment', description: t.promptDescription, multiline: true },
+          { name: 'qqofficial.conversations', description: t.promptConversations, multiline: true },
+          { name: 'qqofficial.identity', description: t.promptIdentity }] }],
     };
   }
 

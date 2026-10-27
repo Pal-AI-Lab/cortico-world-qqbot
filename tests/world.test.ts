@@ -57,11 +57,11 @@ afterEach(async () => { await world?.stop(); await api?.close(); host?.close(); 
 describe('event stream integration', () => {
   it('returns attachment bytes through Core and rejects other accounts and absent attachments', async () => {
     await incoming('C2C_MESSAGE_CREATE', { id: 'media', author: { user_openid: 'user' }, attachments: [{ url: 'https://multimedia.nt.qq.com.cn/image.png', filename: 'photo.png' }] });
-    const cursor = host.store.range({ source: 'qqofficial' })[0].cursor;
-    expect(await tool('read_attachment', { cursor, index: 0 })).toMatchObject({ blobs: [{ bytes: Buffer.from([137, 80, 78, 71]), mime: 'image/png', name: 'photo.png' }] });
-    expect(await tool('read_attachment', { cursor, index: 1 })).toMatchObject({ failed: true });
+    const message = `#${String(host.store.range({ source: 'qqofficial' })[0].meta!.ref)}`;
+    expect(await tool('read_attachment', { message })).toMatchObject({ blobs: [{ bytes: Buffer.from([137, 80, 78, 71]), mime: 'image/png', name: 'photo.png' }] });
+    expect(await tool('read_attachment', { message, index: 2 })).toMatchObject({ failed: true });
     await world.stop(); ctx.value.cfg.appId = 'other'; await start();
-    expect(await tool('read_attachment', { cursor, index: 0 })).toMatchObject({ failed: true });
+    expect(await tool('read_attachment', { message })).toMatchObject({ failed: true });
   });
 
   it.each([
@@ -105,7 +105,7 @@ describe('event stream integration', () => {
 
 describe('outbound actions', () => {
   it('allocates unique reply sequences across concurrent sends and a World restart', async () => {
-    const args = { target: { kind: 'group', id: 'destination' }, content: 'reply', replyTo: 'received' };
+    const args = { to: 'group:destination', text: 'reply', reply_to: 'received' };
     await Promise.all([tool('send_message', args), tool('send_message', args)]);
     await world.stop(); await start(); await tool('send_message', args);
     expect(messages.map((m) => m.body.msg_seq)).toEqual([1, 2, 3]);
@@ -114,8 +114,8 @@ describe('outbound actions', () => {
   });
 
   it('keeps DMS guild routing separate from C2C and channel message formats', async () => {
-    await tool('send_message', { target: { kind: 'dms', id: 'private/guild' }, content: 'direct', replyTo: 'received' });
-    await tool('send_message', { target: { kind: 'channel', id: 'channel' }, content: '**markdown**', format: 'markdown' });
+    await tool('send_message', { to: 'dms:private/guild', text: 'direct', reply_to: 'received' });
+    await tool('send_message', { to: 'channel:channel', text: '**markdown**', format: 'markdown' });
     expect(messages).toEqual([
       { path: '/dms/private%2Fguild/messages', body: { content: 'direct', msg_id: 'received' } },
       { path: '/channels/channel/messages', body: { markdown: { content: '**markdown**' } } },
@@ -124,24 +124,24 @@ describe('outbound actions', () => {
 
   it('uploads a blob before sending media and supports a remote channel image', async () => {
     host.blobs.set('mem:image', { bytes: Uint8Array.of(1, 2, 3), mime: 'image/png' });
-    const result = await tool('send_media', { target: { kind: 'c2c', id: 'user' }, fileType: 1, blob: 'mem:image', replyTo: 'received' });
+    const result = await tool('send_media', { to: 'c2c:user', fileType: 1, blob: 'mem:image', reply_to: 'received' });
     expect(typeof result).toBe('string');
     expect(messages[0].body).toMatchObject({ msg_type: 7, media: { file_info: 'uploaded-file' }, msg_id: 'received' });
-    await tool('send_media', { target: { kind: 'channel', id: 'channel' }, fileType: 1, url: 'https://example.invalid/image.png' });
+    await tool('send_media', { to: 'channel:channel', fileType: 1, url: 'https://example.invalid/image.png' });
     expect(messages[1].body).toEqual({ image: 'https://example.invalid/image.png' });
-    expect((await tool('send_media', { target: { kind: 'channel', id: 'channel' }, fileType: 3, blob: 'mem:image' }) as ToolOutcome).failed).toBe(true);
+    expect((await tool('send_media', { to: 'channel:channel', fileType: 3, blob: 'mem:image' }) as ToolOutcome).failed).toBe(true);
     expect(messages).toHaveLength(2);
   });
 
   it('reports rejected sends as failures without manufacturing sent events', async () => {
-    const rejected = await tool('send_message', { target: { kind: 'c2c', id: 'user' }, content: 'reject' });
+    const rejected = await tool('send_message', { to: 'c2c:user', text: 'reject' });
     expect(rejected).toMatchObject({ failed: true, text: expect.stringContaining('40034105') });
     expect(host.store.range({ source: 'qqofficial' }).filter((e) => e.type === 'qqofficial.sent')).toEqual([]);
     expect(messages).toHaveLength(1);
   });
 
   it('validates anchors and cancellation before sending', async () => {
-    const args = { target: { kind: 'c2c', id: 'user' }, content: 'hello', replyTo: 'received', eventId: 'event' };
+    const args = { to: 'c2c:user', text: 'hello', reply_to: 'received', eventId: 'event' };
     expect(await tool('send_message', args)).toMatchObject({ failed: true });
     const controller = new AbortController(); controller.abort();
     expect(await tool('send_message', { ...args, eventId: undefined }, controller.signal)).toMatchObject({ failed: true });
@@ -149,26 +149,39 @@ describe('outbound actions', () => {
   });
 
   it('continues explicit streams across restart and preserves the reply anchor and format', async () => {
-    const destination = { kind: 'c2c', id: 'user' };
-    const first = await tool('stream_message', { target: destination, content: 'first\n', format: 'markdown', replyTo: 'received', finish: false });
+    const destination = 'c2c:user';
+    const first = await tool('stream_message', { to: destination, text: 'first\n', format: 'markdown', reply_to: 'received', finish: false });
     expect(typeof first).toBe('string');
-    const streamId = JSON.parse((first as string).split('\n').slice(1).join('\n')).streamId as string;
+    const streamId = /streamId=(\S+)$/.exec(first as string)![1];
     // Simulate a process interruption: graceful shutdown now closes published streams.
     world['abort'].abort();
     await world.stop(); await start();
-    await tool('stream_message', { target: destination, streamId, content: 'last\n' });
+    await tool('stream_message', { to: destination, streamId, text: 'last\n' });
     expect(messages.map((m) => m.body)).toMatchObject([
       { index: 0, input_state: 1, content_type: 'markdown', content_raw: 'first\n', msg_id: 'received', msg_seq: 1 },
       { index: 1, input_state: 10, content_type: 'markdown', stream_msg_id: streamId, content_raw: 'last\n', msg_id: 'received', msg_seq: 1 },
     ]);
-    expect(await tool('stream_message', { target: destination, streamId, content: 'extra' })).toMatchObject({ failed: true });
+    expect(await tool('stream_message', { to: destination, streamId, text: 'extra' })).toMatchObject({ failed: true });
     expect(messages).toHaveLength(2);
+  });
+
+  it('addresses replies by message number and records them as the bot\'s own lines', async () => {
+    await incoming('C2C_MESSAGE_CREATE', { id: 'platform-id', author: { user_openid: 'user' }, content: 'hi' }, 'in');
+    expect(world.envPromptVars()['qqofficial.conversations']).toBe('下面是你正在参与的会话:\n- 私聊 用户user(c2c:user)');
+    expect(await tool('send_message', { reply_to: '#1', text: 'hello' })).toBe('[sent #2 → 私聊 用户user, 被动回复]');
+    expect(messages[0]).toMatchObject({ path: '/v2/users/user/messages', body: { content: 'hello', msg_id: 'platform-id' } });
+    host.blobs.set('mem:picture', { bytes: Uint8Array.of(1, 2, 3), mime: 'image/png' });
+    expect(await tool('send_message', { reply_to: '#1', text: 'look', image: 'mem:picture' })).toBe('[sent #3 → 私聊 用户user, 被动回复]');
+    expect(messages[1].body).toMatchObject({ msg_type: 7, content: 'look', msg_id: 'platform-id' });
+    const own = host.store.range({ source: 'qqofficial' }).filter(e => e.type === 'qqofficial.sent').map(e => e.text);
+    expect(own).toEqual([expect.stringMatching(/^#2 \[私聊 \d\d:\d\d\] 你: hello$/), expect.stringMatching(/^#3 \[私聊 \d\d:\d\d\] 你: look \[图片\]$/)]);
+    expect(await tool('send_message', { reply_to: '#1', to: 'c2c:other', text: 'x' })).toMatchObject({ failed: true });
   });
 
   it('history stays within the account and requested target', async () => {
     await incoming('C2C_MESSAGE_CREATE', { id: 'one', author: { user_openid: 'a' }, content: 'one' }, 'one');
     await incoming('C2C_MESSAGE_CREATE', { id: 'two', author: { user_openid: 'b' }, content: 'two' }, 'two');
-    const history = JSON.parse(await tool('history', { target: { kind: 'c2c', id: 'a' } }) as string);
-    expect(history.map((e: { meta: { messageId: string } }) => e.meta.messageId)).toEqual(['one']);
+    const history = await tool('read_history', { to: 'c2c:a' }) as string;
+    expect(history).toMatch(/^#1 \[私聊 \d\d:\d\d\] 用户a: one$/);
   });
 });

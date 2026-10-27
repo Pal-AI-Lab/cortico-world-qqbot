@@ -12,6 +12,8 @@ export interface QQOfficialGatewayOptions {
   timeoutMs: number;
   onEvent(event: QQOfficialDispatch): Promise<void>;
   onState(state: QQOfficialConnectionState, detail?: string): void;
+  /** The bot account from READY: `id` and `username`. */
+  onReady?(user: Record<string, unknown>): void;
 }
 
 class FatalGatewayError extends Error {}
@@ -90,6 +92,8 @@ export class QQOfficialGateway {
               if (failure || this.abort.signal.aborted) return;
               if (frame.t === 'READY') {
                 this.session = string(object(frame.d).session_id, 'session_id');
+                const user = object(frame.d).user;
+                if (user && typeof user === 'object') this.options.onReady?.(user as Record<string, unknown>);
                 ready(); clearTimeout(handshake); this.options.onState('online');
               } else if (frame.t === 'RESUMED') {
                 ready(); clearTimeout(handshake); this.options.onState('online');

@@ -76,7 +76,17 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 
 消息投递为 `qqofficial.message`，互动、关系变化及其他平台事件投递为 `qqofficial.notice`。两者均为 `origin: external`、`trigger: debounce`；Core 负责保存和批处理，Persona 决定是否行动。原始正文、提及、引用、附件和 `message_scene` 保留在 `meta.data`。
 
-每条消息携带发送目标 `target`：
+进入模型上下文的正文与 Cortico 内建 QQ World 同形，每条一行：
+
+```text
+#12 [私聊 21:32] 用户A1B2C3: [回复#11] 在吗 [表情:呲牙] [图片]
+#13 [私聊 21:33] 你: 在的
+[系统] 私聊 用户A1B2C3 关闭了你的主动消息
+```
+
+`#编号` 是 World 分配的短编号，对应一条 QQ 消息，工具里的 `reply_to`、`message`、`before` 都填它。私聊和群聊只有 OpenID，行里显示尾号；频道显示昵称。小黄脸按表情名渲染，引用已记录的消息写 `[回复#编号]`，未记录的直接带出原文。附件按类型显示 `[图片]`、`[语音]`、`[视频 文件名]`、`[文件 文件名]`。发送回执写成 `[sent #编号 → 会话, 被动回复]`，结果里注明实际按被动回复、主动消息还是召回消息发出，以及发生过的降级。环境提示词列出已知会话和它们的地址。
+
+每条消息携带发送目标 `target`，工具中的地址写作 `c2c:<OpenID>`、`group:<群 OpenID>`、`channel:<子频道 ID>`、`dms:<guild_id>`：
 
 | `target.kind` | `target.id` |
 | --- | --- |
@@ -93,18 +103,18 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 
 | 工具 | 契约 |
 | --- | --- |
-| `qqofficial_send_message` | 发送文本或 Markdown，可携带消息引用和平台原生键盘对象。 |
-| `qqofficial_send_media` | 发送公开 URL 或宿主管理的 `log:`/`mem:` 附件，二者选一；不接受本地路径；类型 1 图片、2 视频、3 语音、4 文件；`items` 可顺序发送至多 8 项。 |
+| `qqofficial_send_message` | 发送文字，可带一张图片（`image`）或单独一条语音（`voice`），取值为 `log:`/`mem:` 句柄或公网 URL；`quote=true` 显示引用；可带平台原生键盘对象。 |
+| `qqofficial_send_media` | 发送视频、文件或多张图片：公开 URL 或宿主管理的 `log:`/`mem:` 附件，二者选一；不接受本地路径；类型 1 图片、2 视频、3 语音、4 文件；`items` 可顺序发送至多 8 项。 |
 | `qqofficial_stream_message` | `followModel=true` 将下一轮模型公开正文发送到选定目标；也支持手动 C2C 分片。 |
 | `qqofficial_delete_message` | 撤回指定目标中机器人发送的消息。 |
 | `qqofficial_list_targets` | 列出当前 AppID 的已知会话、近期回复依据和主动接收状态。 |
-| `qqofficial_history` | 查询当前 AppID 的 World 存档，可按目标和游标筛选。 |
-| `qqofficial_read_attachment` | 按事件游标、附件序号读取内容；`quotedIndex` 可选择引用消息，语音转换为 WAV 后交给 Core。 |
+| `qqofficial_read_history` | 按行返回当前 AppID 的消息历史，可按会话（`to`）筛选，`before` 填编号往前翻。 |
+| `qqofficial_read_attachment` | 按消息编号和从 1 开始的附件序号读取内容；`quoted=true` 读引用消息里的附件，语音转换为 WAV 后交给 Core。 |
 | `qqofficial_ack_interaction` | 使用 0 至 5 的结果码明确确认平台互动事件。 |
 
-回复消息使用 `replyTo`，回复事件使用 `eventId`，两者互斥。`delivery` 支持 `reply`、`proactive`、`auto`、`wakeup`：`auto` 在保守的近期窗口和已使用序号范围内选取回复依据，否则主动发送；`wakeup` 仅用于 QQ 单聊，由 QQ 判定唤醒权限。省略 `delivery` 和回复依据时仍为主动发送。已知主动接收关闭或已删除机器人的目标会被本地拒绝，普通被动回复不受这一检查限制。目标状态、发送序号从当前账号的事件存档恢复。
+地址写在 `to`；`reply_to` 填消息编号，回复那一条并沿用它的会话，省略 `to`。没有记录的编号按 QQ 消息 ID 原样作为回复依据。回复事件使用 `eventId`，与 `reply_to` 互斥。`delivery` 支持 `reply`、`proactive`、`auto`、`wakeup`：`auto` 在保守的近期窗口和已使用序号范围内选取回复依据，否则主动发送；`wakeup` 仅用于 QQ 单聊，由 QQ 判定唤醒权限。省略 `delivery` 和回复依据时仍为主动发送。已知主动接收关闭或已删除机器人的目标会被本地拒绝，普通被动回复不受这一检查限制。目标状态、发送序号从当前账号的事件存档恢复。
 
-定时通知复用宿主已有的 `alarm_set`、`alarm_list`、`alarm_cancel`；提醒内容保存 `qqofficial_list_targets` 返回的准确目标，唤醒后调用发送工具并指定 `delivery=proactive`。扩展不另起调度器。默认在上次主动发送尝试结束后等待三秒，再发起下一次；被拒绝的请求和降级重试同样受此间隔限制。QQ 的权限、配额和接收方设置仍可能拒绝请求。
+定时通知复用宿主已有的 `alarm_set`、`alarm_list`、`alarm_cancel`；提醒内容保存 `qqofficial_list_targets` 返回的会话地址，唤醒后调用发送工具并指定 `delivery=proactive`。扩展不另起调度器。默认在上次主动发送尝试结束后等待三秒，再发起下一次；被拒绝的请求和降级重试同样受此间隔限制。QQ 的权限、配额和接收方设置仍可能拒绝请求。
 
 `followModel=true` 必须明确选择目标；下一轮只转发公开正文，不包含推理和工具参数。带回复依据的 C2C 按间隔发送，主动通知、群、频道和频道私信缓冲后发普通消息；流式接口明确返回 404/405 时也缓冲降级。轮次结束、调用其他工具、取消、切换会话或空闲超时会结束流。手动 C2C 分片使用 `content`，续片沿用返回的 `streamId`，`finish` 默认为 true，目标、格式、回复依据和序号保持不变。已发送内容不会因后续失败而整段重发；结果未知的续片会在进程重启后继续禁止重放。
 

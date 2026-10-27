@@ -2,45 +2,17 @@
   "tools": [
     {
       "name": "qqofficial_send_message",
-      "description": "发送文本或 Markdown。replyTo/eventId 互斥；delivery 支持 auto、reply、proactive、wakeup。不传依据和 delivery 时主动发送；fallback=false 禁用格式或回复方式降级。",
+      "description": "发一条 QQ 消息：文字，可以带一张图片(image),或者单独发一条语音(voice)。reply_to 填消息编号，回复那一条，会话随之确定;quote=true 时在 QQ 里显示引用。不填 reply_to 时按主动消息发送;delivery=auto 会自动挑选还能用的回复依据。",
       "parameters": {
         "type": "object",
         "properties": {
-          "target": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "kind",
-              "id"
-            ],
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "c2c",
-                  "group",
-                  "channel",
-                  "dms"
-                ]
-              },
-              "id": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
-          },
-          "content": {
-            "type": "string"
-          },
-          "format": {
+          "to": {
             "type": "string",
-            "enum": [
-              "text",
-              "markdown"
-            ]
+            "description": "c2c:<OpenID>, group:<group OpenID>, channel:<id> or dms:<id>"
           },
-          "replyTo": {
-            "type": "string"
+          "reply_to": {
+            "type": "string",
+            "description": "#<n> from the start of a message line"
           },
           "eventId": {
             "type": "string"
@@ -57,55 +29,68 @@
           "fallback": {
             "type": "boolean"
           },
-          "referenceId": {
+          "text": {
             "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "voice": {
+            "type": "string"
+          },
+          "quote": {
+            "type": "boolean"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "text",
+              "markdown"
+            ]
           },
           "keyboard": {
             "type": "object"
           }
         },
-        "required": [
-          "target",
-          "content"
-        ],
+        "required": [],
         "additionalProperties": false
       },
       "tags": [
         "speak"
       ],
       "summary": {
-        "zh": "发送文本或 Markdown 消息。",
-        "en": "Sends text or Markdown messages."
+        "zh": "发送文字，可带一张图片或单独一条语音。",
+        "en": "Sends text, optionally with one image, or a voice bar."
       }
     },
     {
       "name": "qqofficial_send_media",
-      "description": "发送媒体；公开 url 与宿主管理的 log:/mem: blob 二选一，items 可批量发送至多 8 项。不接受本地 path。fileType: 1 图片、2 视频、3 语音、4 文件。语音自动转码。部分失败不会重发已成功项。",
+      "description": "发视频、文件，或一次发多张图片(items,最多 8 项)。url 与 blob(log:/mem: 句柄)二选一;fileType:1 图片、2 视频、3 语音、4 文件。部分失败时已发出的不会重发。",
       "parameters": {
         "type": "object",
         "properties": {
-          "target": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "kind",
-              "id"
-            ],
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "c2c",
-                  "group",
-                  "channel",
-                  "dms"
-                ]
-              },
-              "id": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
+          "to": {
+            "type": "string",
+            "description": "c2c:<OpenID>, group:<group OpenID>, channel:<id> or dms:<id>"
+          },
+          "reply_to": {
+            "type": "string",
+            "description": "#<n> from the start of a message line"
+          },
+          "eventId": {
+            "type": "string"
+          },
+          "delivery": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "reply",
+              "proactive",
+              "wakeup"
+            ]
+          },
+          "fallback": {
+            "type": "boolean"
           },
           "url": {
             "type": "string"
@@ -121,26 +106,8 @@
           "fileName": {
             "type": "string"
           },
-          "content": {
+          "text": {
             "type": "string"
-          },
-          "replyTo": {
-            "type": "string"
-          },
-          "eventId": {
-            "type": "string"
-          },
-          "delivery": {
-            "type": "string",
-            "enum": [
-              "auto",
-              "reply",
-              "proactive",
-              "wakeup"
-            ]
-          },
-          "fallback": {
-            "type": "boolean"
           },
           "items": {
             "type": "array",
@@ -164,7 +131,7 @@
                 "fileName": {
                   "type": "string"
                 },
-                "content": {
+                "text": {
                   "type": "string"
                 }
               },
@@ -174,60 +141,30 @@
             }
           }
         },
-        "required": [
-          "target"
-        ],
+        "required": [],
         "additionalProperties": false
       },
       "tags": [
         "speak"
       ],
       "summary": {
-        "zh": "发送图片、语音、视频或文件。",
-        "en": "Sends images, voice, video or files."
+        "zh": "发送视频、文件或多张图片。",
+        "en": "Sends video, files or several images."
       }
     },
     {
       "name": "qqofficial_stream_message",
-      "description": "followModel=true 将下一轮公开正文自动发给指定 QQ target；调用后直接输出正文。带回复依据的 C2C 流式，主动通知和其他会话缓冲后发送。手动模式传 content，续片传 streamId，finish 默认 true。",
+      "description": "followModel=true:下一轮你写的公开正文会自动发到这个会话，私聊里逐字显示，其他会话在本轮结束后整段发出。手动分片时传 text,续片沿用返回的 streamId,finish 默认 true。",
       "parameters": {
         "type": "object",
         "properties": {
-          "target": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "kind",
-              "id"
-            ],
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "c2c",
-                  "group",
-                  "channel",
-                  "dms"
-                ]
-              },
-              "id": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
-          },
-          "content": {
-            "type": "string"
-          },
-          "format": {
+          "to": {
             "type": "string",
-            "enum": [
-              "text",
-              "markdown"
-            ]
+            "description": "c2c:<OpenID>, group:<group OpenID>, channel:<id> or dms:<id>"
           },
-          "replyTo": {
-            "type": "string"
+          "reply_to": {
+            "type": "string",
+            "description": "#<n> from the start of a message line"
           },
           "eventId": {
             "type": "string"
@@ -244,6 +181,16 @@
           "fallback": {
             "type": "boolean"
           },
+          "text": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "text",
+              "markdown"
+            ]
+          },
           "streamId": {
             "type": "string"
           },
@@ -254,9 +201,7 @@
             "type": "boolean"
           }
         },
-        "required": [
-          "target"
-        ],
+        "required": [],
         "additionalProperties": false
       },
       "tags": [
@@ -269,40 +214,17 @@
     },
     {
       "name": "qqofficial_delete_message",
-      "description": "撤回指定会话中机器人发送的消息；平台决定权限和有效期。",
+      "description": "撤回你发过的一条消息，填它的编号。",
       "parameters": {
         "type": "object",
         "properties": {
-          "target": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "kind",
-              "id"
-            ],
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "c2c",
-                  "group",
-                  "channel",
-                  "dms"
-                ]
-              },
-              "id": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
-          },
-          "messageId": {
-            "type": "string"
+          "message": {
+            "type": "string",
+            "description": "#<n> from the start of a message line"
           }
         },
         "required": [
-          "target",
-          "messageId"
+          "message"
         ],
         "additionalProperties": false
       },
@@ -315,37 +237,18 @@
       }
     },
     {
-      "name": "qqofficial_history",
-      "description": "查询本 World 的事件历史，可按会话和游标筛选。",
+      "name": "qqofficial_read_history",
+      "description": "读 QQ 会话的历史消息，可按会话(to)筛选，before 填编号往前翻。",
       "parameters": {
         "type": "object",
         "properties": {
-          "target": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "kind",
-              "id"
-            ],
-            "properties": {
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "c2c",
-                  "group",
-                  "channel",
-                  "dms"
-                ]
-              },
-              "id": {
-                "type": "string",
-                "minLength": 1
-              }
-            }
+          "to": {
+            "type": "string",
+            "description": "c2c:<OpenID>, group:<group OpenID>, channel:<id> or dms:<id>"
           },
-          "beforeCursor": {
-            "type": "integer",
-            "minimum": 1
+          "before": {
+            "type": "string",
+            "description": "#<n> from the start of a message line"
           },
           "limit": {
             "type": "integer",
@@ -360,33 +263,31 @@
         "read"
       ],
       "summary": {
-        "zh": "读取当前机器人在 Core 中保存的事件历史。",
-        "en": "Reads this bot’s event history stored by Core."
+        "zh": "读取 QQ 会话的历史消息。",
+        "en": "Reads past QQ messages."
       }
     },
     {
       "name": "qqofficial_read_attachment",
-      "description": "读取已保存的 QQ 附件；cursor 来自历史，index 是 attachments 中从 0 开始的序号。可用 quotedIndex 选择 data.msg_elements 中的引用消息。只读取 QQ CDN，语音转为 WAV。",
+      "description": "读取一条消息里的附件(语音转成 WAV)。message 填消息编号;index 是第几个附件，默认第 1 个;quoted=true 读它引用的那条消息里的附件。",
       "parameters": {
         "type": "object",
         "properties": {
-          "cursor": {
-            "type": "integer",
-            "minimum": 1
+          "message": {
+            "type": "string",
+            "description": "#<n> from the start of a message line"
           },
           "index": {
             "type": "integer",
-            "minimum": 0
-          },
-          "quotedIndex": {
-            "type": "integer",
-            "minimum": 0,
+            "minimum": 1,
             "maximum": 100
+          },
+          "quoted": {
+            "type": "boolean"
           }
         },
         "required": [
-          "cursor",
-          "index"
+          "message"
         ],
         "additionalProperties": false
       },
@@ -400,7 +301,7 @@
     },
     {
       "name": "qqofficial_list_targets",
-      "description": "列出本账号已知 QQ 会话目标、最近消息和主动接收状态。定时通知须保存准确 target，并在唤醒后以 delivery=proactive 发送。",
+      "description": "列出认识的 QQ 会话、地址，以及现在还能不能被动回复。定时提醒里记下准确地址，到点后用 delivery=proactive 发送。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -423,7 +324,7 @@
     },
     {
       "name": "qqofficial_ack_interaction",
-      "description": "确认互动事件；code=0 成功、1 失败、2 太频繁、3 重复、4 无权限、5 仅管理员可操作。",
+      "description": "确认按钮互动:code=0 成功、1 失败、2 太频繁、3 重复、4 无权限、5 仅管理员可操作。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -456,8 +357,8 @@
       "type": "qqofficial.message",
       "trigger": "debounce",
       "description": {
-        "zh": "收到 QQ 消息，保留正文、会话和原始字段。",
-        "en": "An incoming QQ message, with its target and original fields."
+        "zh": "收到一条 QQ 消息，渲染成一行可读文本，原始字段留在存档里。",
+        "en": "An incoming QQ message rendered as one readable line; original fields stay in the archive."
       }
     },
     {
@@ -505,7 +406,7 @@
       "key": "worlds.qqofficial.envPrompt",
       "title": "环境提示词",
       "role": "envPrompt",
-      "content": "{{qqofficial.environment}}\n"
+      "content": "{{qqofficial.environment}}\n\n{{qqofficial.conversations}}\n{{qqofficial.identity}}\n"
     }
   ]
 }

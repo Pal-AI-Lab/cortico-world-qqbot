@@ -56,7 +56,7 @@ export class QQSessionState {
       throw new Error('QQ proactive messages are disabled for this target; wait for a user reply or enable Allow proactive messages in QQ');
     }
   }
-  list(limit: number): unknown[] {
+  list(limit: number): Array<SessionTarget & { replyAvailable: boolean }> {
     return [...this.targets.values()].sort((a, b) => b.lastSeen.localeCompare(a.lastSeen)).slice(0, limit)
       .map(s => ({ ...s, replyAvailable: !!this.recentReply(s.target) }));
   }
