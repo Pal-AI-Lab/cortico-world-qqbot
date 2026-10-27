@@ -149,6 +149,19 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 
 `pnpm describe` 重新生成 `describe.json`；`pnpm check:extension` 使用 SDK 的 manifest、构造和能力声明校验器，不启动连接。发布版 SDK 缺少可选依赖的内建 World 会跳过工具名称冲突检查，并显示提示。包元数据遵循 [Cortico 扩展市场](https://github.com/Pal-AI-Lab/cortico-extensions) 的规范；向该市场登记和发布 npm 包是独立操作。
 
+发布 GitHub Release 会运行 [release 工作流](.github/workflows/release.yml)：校验并构建项目，将主包和 API 5 兼容包附加到 Release，然后将主包发布到 npm，并生成来源证明（provenance）。草稿 Release 不会触发发布。Release 标签必须与 `v<package.json 中的版本号>` 完全一致，例如 `v0.2.1`。正式版本使用 npm 的 `latest` 标签；GitHub 预发布版本或版本号包含预发布后缀时使用 `next`。API 5 兼容包仅作为 GitHub Release 附件分发。
+
+首次自动发布前，在 npm 包的设置中配置 [Trusted Publisher](https://docs.npmjs.com/trusted-publishers/)：
+
+- Provider：**GitHub Actions**
+- Organization or user：`leafliber`
+- Repository：`cortico-world-qq-official`
+- Workflow filename：`release.yml`
+- Environment name：留空
+- Allowed actions：允许通过 `npm publish` 直接发布
+
+工作流在 GitHub 托管的 runner 上使用 OIDC 认证，无需配置 `NPM_TOKEN` Secret。如果 npm 上还没有这个包，需要先从已登录 npm 的本机环境发布一次，再配置 Trusted Publisher。之后每次发版，更新 `package.json` 和 `CHANGELOG.md`，提交后使用对应标签发布 GitHub Release。每次都需使用 npm 上尚未发布的新版本号；工作流不会自动递增版本。
+
 测试使用本机 HTTP/WebSocket 服务器、Ed25519、AES-GCM、Cortico JSONL 事件库和 SDK 浏览器 UI 组件，覆盖回调持久化、重连、去重、主动消息节流与拒收、自动回复流、失败降级、未知结果恢复、分块上传、真实音频编解码、媒体边界、绑定和面板卸载。自动化测试不访问真实 QQ，也不读取操作员部署。真实服务联调单独运行；`experimental` 标签保留，因为不同 QQ 应用的权限与媒体能力仍需逐项验收。
 
 协议参考：[AstrBot QQ Official](https://github.com/AstrBotDevs/AstrBot/tree/master/astrbot/core/platform/sources/qqofficial)、[AstrBot Webhook](https://github.com/AstrBotDevs/AstrBot/tree/master/astrbot/core/platform/sources/qqofficial_webhook) 和 [QQ 官方接口文档](https://bot.q.qq.com/wiki/develop/api-v2/)。本包使用独立的 TypeScript 实现，无需 AstrBot 运行时。

@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          package-manager-cache: false
+      - name: Validate release version
+        id: release
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_PRERELEASE: ${{ github.event.release.prerelease }}
+        run: |
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+
+          const { name, version } = JSON.parse(readFileSync('package.json', 'utf8'));
+          if (process.env.RELEASE_TAG !== `v${version}`) {
+            throw new Error(`Release tag must be v${version}, received ${process.env.RELEASE_TAG}`);
+          }
+          const prerelease = process.env.RELEASE_PRERELEASE === 'true' || version.split('+')[0].includes('-');
+          const distTag = prerelease ? 'next' : 'latest';
+          const tarball = `${name.replace('@', '').replace('/', '-')}-${version}.tgz`;
+          appendFileSync(process.env.GITHUB_OUTPUT, `dist-tag=${distTag}\ntarball=${tarball}\n`);
+          console.log(`Publishing ${name}@${version} with npm tag ${distTag}`);
+          NODE
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - name: Install audio test dependency
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Verify
+        run: pnpm verify
+      - name: Build
+        run: pnpm build
+      - name: Pack release assets
+        run: |
+          pnpm pack:api5
+          npm pack --ignore-scripts --pack-destination dist
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" dist/*.tgz --clobber
+      - name: Publish to npm
+        env:
+          PACKAGE_TARBALL: ./dist/${{ steps.release.outputs.tarball }}
+          NPM_DIST_TAG: ${{ steps.release.outputs.dist-tag }}
+        run: npm publish "$PACKAGE_TARBALL" --access public --provenance --ignore-scripts --tag "$NPM_DIST_TAG"

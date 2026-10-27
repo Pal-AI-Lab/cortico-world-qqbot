@@ -149,6 +149,19 @@ The operator panel supports all eleven Cortico UI languages. Model instructions 
 
 `pnpm describe` regenerates `describe.json`. `pnpm check:extension` runs the SDK's manifest, construction and self-description validators without starting a connection. Optional built-ins missing from the published SDK's dependencies are excluded from tool-name collision checking, with a warning. The package metadata follows the [Cortico extension registry](https://github.com/Pal-AI-Lab/cortico-extensions); registration in that registry and publication to npm are separate operations.
 
+Publishing a GitHub Release runs [the release workflow](.github/workflows/release.yml): it verifies and builds the package, attaches the main and API 5 compatibility tarballs to the release, and publishes the main tarball to npm with provenance. Draft releases do not publish. The release tag must exactly match `v<package.json version>` (for example, `v0.2.1`). Stable versions use npm's `latest` tag; GitHub pre-releases and versions with a prerelease suffix use `next`. The API 5 tarball is only attached to GitHub Releases.
+
+Before the first automated release, configure a [Trusted Publisher](https://docs.npmjs.com/trusted-publishers/) in the npm package's settings:
+
+- Provider: **GitHub Actions**
+- Organization or user: `leafliber`
+- Repository: `cortico-world-qq-official`
+- Workflow filename: `release.yml`
+- Environment name: leave empty
+- Allowed actions: enable direct publishing with `npm publish`
+
+The workflow uses OIDC on a GitHub-hosted runner, so no `NPM_TOKEN` secret is needed. If the package does not exist on npm yet, publish it once from an authenticated local environment before configuring its trusted publisher. For each subsequent release, update `package.json` and `CHANGELOG.md`, commit the changes, and publish a GitHub Release at the matching tag. Use a new, unpublished npm version each time; the workflow does not bump versions automatically.
+
 Tests use real local HTTP/WebSocket servers, Ed25519 and AES-GCM, the Cortico JSONL event store, and the SDK's browser UI primitives. They cover persistence, reconnection, deduplication, proactive throttling and opt-outs, model reply streaming, downgrades, uncertain-delivery recovery, chunked transfers, real audio codecs, media boundaries, binding and panel disposal. Automated tests never contact QQ or use an operator deployment. Live service checks run separately. The `experimental` tag remains because permissions and media support require validation for each QQ application.
 
 Protocol references: [AstrBot QQ Official](https://github.com/AstrBotDevs/AstrBot/tree/master/astrbot/core/platform/sources/qqofficial), [AstrBot Webhook](https://github.com/AstrBotDevs/AstrBot/tree/master/astrbot/core/platform/sources/qqofficial_webhook), and [QQ's API documentation](https://bot.q.qq.com/wiki/develop/api-v2/). This package contains an independent TypeScript implementation; no AstrBot runtime is needed.
