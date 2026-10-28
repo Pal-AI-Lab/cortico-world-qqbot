@@ -1,7 +1,7 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/icon.svg" alt="QQ Bot" width="88" height="88">
+  <img src="https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.2/assets/icon.svg" alt="QQ Bot" width="88" height="88">
 </p>
 
 # QQ Bot (cortico-world-qqbot)
@@ -21,13 +21,13 @@ Maintained by [Pal AI Lab](https://github.com/Pal-AI-Lab), originally written by
 
 ## Panel previews
 
-The screenshots render the actual extension panels with Cortico UI components and sample data. They contain no live QR authorization, bot credentials or private conversations.
+The screenshots render the actual extension panels with Cortico UI components and sample data. They contain no live QR authorization, bot credentials or private conversations. After UI changes, regenerate them with `node scripts/screenshots/build.mjs`; the steps are at the top of that script.
 
-![QQ connection panel](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/screenshots/connection-zh.png)
+![QQ connection panel](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.2/assets/screenshots/connection-zh.png)
 
-![Connection success panel with the QR code removed](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/screenshots/connected-zh.png)
+![Connection success panel with the QR code removed](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.2/assets/screenshots/connected-zh.png)
 
-![Credentials and connection settings](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/screenshots/configuration-zh.png)
+![Credentials and connection settings](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.2/assets/screenshots/configuration-zh.png)
 
 ## Install
 

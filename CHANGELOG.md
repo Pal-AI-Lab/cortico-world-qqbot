@@ -2,6 +2,11 @@
 
 # Changelog
 
+## 0.3.2
+
+- New market screenshots of the QQ Bot panels, rendered from the real panel code with sample data; `scripts/screenshots/` rebuilds them.
+- The scanning hint asks for a new bot, since picking an existing one has returned credentials that yield no token.
+
 ## 0.3.1
 
 - New market icon in the house style of Pal AI Lab extensions.
