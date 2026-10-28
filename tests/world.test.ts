@@ -74,13 +74,13 @@ describe('event stream integration', () => {
   });
 
   it.each([
-    ['C2C_MESSAGE_CREATE', { author: { user_openid: 'user' } }, { kind: 'c2c', id: 'user' }],
-    ['GROUP_AT_MESSAGE_CREATE', { group_openid: 'group' }, { kind: 'group', id: 'group' }],
-    ['GROUP_MESSAGE_CREATE', { group_openid: 'group' }, { kind: 'group', id: 'group' }],
-    ['AT_MESSAGE_CREATE', { channel_id: 'channel', guild_id: 'guild' }, { kind: 'channel', id: 'channel' }],
-    ['MESSAGE_CREATE', { channel_id: 'channel', guild_id: 'guild' }, { kind: 'channel', id: 'channel' }],
-    ['DIRECT_MESSAGE_CREATE', { author: { id: 'member' }, channel_id: 'channel', guild_id: 'private-guild' }, { kind: 'dms', id: 'private-guild' }],
-  ])('delivers %s with its API target and raw fields without sending a reply', async (event, fields, target) => {
+    ['C2C_MESSAGE_CREATE', { author: { user_openid: 'user' } }, { kind: 'c2c', id: 'user' }, 'debounce'],
+    ['GROUP_AT_MESSAGE_CREATE', { group_openid: 'group' }, { kind: 'group', id: 'group' }, 'flush'],
+    ['GROUP_MESSAGE_CREATE', { group_openid: 'group' }, { kind: 'group', id: 'group' }, 'debounce'],
+    ['AT_MESSAGE_CREATE', { channel_id: 'channel', guild_id: 'guild' }, { kind: 'channel', id: 'channel' }, 'flush'],
+    ['MESSAGE_CREATE', { channel_id: 'channel', guild_id: 'guild' }, { kind: 'channel', id: 'channel' }, 'debounce'],
+    ['DIRECT_MESSAGE_CREATE', { author: { id: 'member' }, channel_id: 'channel', guild_id: 'private-guild' }, { kind: 'dms', id: 'private-guild' }, 'debounce'],
+  ])('delivers %s with its API target and raw fields without sending a reply', async (event, fields, target, trigger) => {
     const data = { ...fields, id: 'message', content: '  <@bot> hello', attachments: [{ url: 'https://example.invalid/image.png', content_type: 'image/png' }],
       message_scene: { ext: [{ msg_idx: 'reference' }] } };
     expect((await incoming(event, data)).status).toBe(200);
@@ -88,7 +88,8 @@ describe('event stream integration', () => {
     const saved = host.store.range({ source: 'qqbot' });
     expect(saved).toHaveLength(1);
     expect(saved[0]).toMatchObject({ type: 'qqbot.message', origin: 'external', meta: { target, data, messageId: 'message', eventId: 'event' } });
-    expect(host.pushes[0].options).toMatchObject({ deliver: true, trigger: 'debounce' });
+    // An @ in a group or channel wakes at once, as in the built-in QQ World.
+    expect(host.pushes[0].options).toMatchObject({ deliver: true, trigger });
   });
 
   it('persists unknown notices and deduplicates simultaneous callbacks and callbacks after restart', async () => {
@@ -146,7 +147,8 @@ describe('outbound actions', () => {
     const rejected = await tool('send_message', { to: 'c2c:user', text: 'reject' });
     expect(rejected).toMatchObject({ failed: true, text: expect.stringContaining('40034105') });
     expect(host.store.range({ source: 'qqbot' }).filter((e) => e.type === 'qqbot.sent')).toEqual([]);
-    expect(messages).toHaveLength(1);
+    // A refused proactive message is retried once as the wakeup message of the period.
+    expect(messages.map(m => m.body.is_wakeup)).toEqual([undefined, true]);
   });
 
   it('validates anchors and cancellation before sending', async () => {
@@ -177,10 +179,10 @@ describe('outbound actions', () => {
   it('addresses replies by message number and records them as the bot\'s own lines', async () => {
     await incoming('C2C_MESSAGE_CREATE', { id: 'platform-id', author: { user_openid: 'user' }, content: 'hi' }, 'in');
     expect(world.envPromptVars()['qqbot.conversations']).toBe('下面是你正在参与的会话:\n- 私聊 用户user(c2c:user)');
-    expect(await tool('send_message', { reply_to: '#1', text: 'hello' })).toBe('[sent #2 → 私聊 用户user, 被动回复]');
+    expect(await tool('send_message', { reply_to: '#1', text: 'hello' })).toBe('[sent #2 → 私聊 用户user, 被动回复。这条消息还能回 3 次，还剩 30 分钟]');
     expect(messages[0]).toMatchObject({ path: '/v2/users/user/messages', body: { content: 'hello', msg_id: 'platform-id' } });
     host.blobs.set('mem:picture', { bytes: Uint8Array.of(1, 2, 3), mime: 'image/png' });
-    expect(await tool('send_message', { reply_to: '#1', text: 'look', image: 'mem:picture' })).toBe('[sent #3 → 私聊 用户user, 被动回复]');
+    expect(await tool('send_message', { reply_to: '#1', text: 'look', image: 'mem:picture' })).toBe('[sent #3 → 私聊 用户user, 被动回复。这条消息还能回 2 次，还剩 30 分钟]');
     expect(messages[1].body).toMatchObject({ msg_type: 7, content: 'look', msg_id: 'platform-id' });
     const own = host.store.range({ source: 'qqbot' }).filter(e => e.type === 'qqbot.sent').map(e => e.text);
     expect(own).toEqual([expect.stringMatching(/^#2 \[私聊 \d\d:\d\d\] 你: hello$/), expect.stringMatching(/^#3 \[私聊 \d\d:\d\d\] 你: look \[图片\]$/)]);

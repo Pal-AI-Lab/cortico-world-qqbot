@@ -20,7 +20,7 @@ const TEXT = {
     streamFailed: (error: string) => `流式回复中断:${error}。已经发出的部分对方能看到,不要整段重发。`,
     unknown: (type: string) => `QQ 平台事件 ${type}`, system: '[系统]',
     modes: { reply: '被动回复', proactive: '主动消息', wakeup: '召回消息' } as Record<string, string>,
-    fallback: { proactive: '回复依据失效,已改为主动消息', text: '没有 Markdown 权限,已改为纯文本' } as Record<string, string>,
+    fallback: { proactive: '回复依据失效，已改为主动消息', text: '没有 Markdown 权限，已改为纯文本' } as Record<string, string>,
   },
   en: {
     c2c: 'DM', group: (id: string) => `group ${id}`, channel: (id: string) => `channel ${id}`, dms: 'guild DM',
@@ -92,7 +92,11 @@ function renderContent(content: string, data: JsonObject, t: RenderText, selfId?
   };
   const text = content
     .replace(/<faceType=\d+[^>]*>/g, tag => ` ${decodeFace(tag, t)} `)
-    .replace(/<emoji:(\d+)>/g, (_, id: string) => ` ${QFACE_NAMES[id] ? t.face(QFACE_NAMES[id]) : t.faceUnknown} `)
+    // Older payloads write faces as [<face,id=13/>].
+    .replace(/\[<face,id=(\d+)\s*\/>\]|<emoji:(\d+)>/g, (_, a?: string, b?: string) => {
+      const id = a ?? b ?? '';
+      return ` ${QFACE_NAMES[id] ? t.face(QFACE_NAMES[id]) : t.faceUnknown} `;
+    })
     .replace(/<qqbot-at-everyone\s*\/>|@everyone/g, ` ${t.everyone} `)
     .replace(/<qqbot-at-user\s+id="([^"]+)"\s*\/>/g, (_, id: string) => ` ${mention(id)} `)
     .replace(/<@!?([^>\s]+)>/g, (_, id: string) => ` ${mention(id)} `)

@@ -6,6 +6,8 @@ import type { JsonObject } from './protocol.ts';
 export async function sendWithFallback(options: {
   payload: JsonObject; send(payload: JsonObject): Promise<JsonObject>; signal: AbortSignal;
   fallback: boolean; proactive(): Promise<number>; continuation?: boolean;
+  /** Direct chats only: reserve a sequence for a wakeup message after a proactive message is refused. */
+  wakeup?(): Promise<number>;
 }): Promise<{ result: JsonObject; payload: JsonObject; fallbacks: string[] }> {
   const payload = { ...options.payload };
   const fallbacks: string[] = [];
@@ -29,6 +31,12 @@ export async function sendWithFallback(options: {
         delete payload.msg_id; delete payload.event_id;
         if ('msg_seq' in payload) payload.msg_seq = sequence;
         fallbacks.push('proactive');
+      } else if ((error.kind === 'proactive' || error.kind === 'refused') && options.wakeup && !payload.msg_id && !payload.event_id
+        && !payload.is_wakeup && !fallbacks.includes('wakeup')) {
+        const sequence = await options.wakeup();
+        payload.is_wakeup = true;
+        if ('msg_seq' in payload) payload.msg_seq = sequence;
+        fallbacks.push('wakeup');
       } else if (error.kind === 'markdown' && (payload.markdown || payload.content_type === 'markdown') && !fallbacks.includes('text')) {
         if (payload.markdown) {
           payload.content = (payload.markdown as JsonObject).content;

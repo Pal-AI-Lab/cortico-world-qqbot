@@ -107,7 +107,8 @@ export class QQOfficialWorld implements World {
       // An image or voice bar given to the send tool goes through the media path.
       const run = internal.mediaSend ? 'media' : action;
       delete internal.mediaSend;
-      return this.present(run, await this.execute(run, internal, signal));
+      try { return this.present(run, await this.execute(run, internal, signal)); }
+      catch (error) { throw this.explain(error); }
     }));
   }
 
@@ -184,8 +185,26 @@ export class QQOfficialWorld implements World {
     const destination = receipt.target as QQOfficialTarget;
     const ref = typeof receipt.messageId === 'string' ? this.refByMessage.get(receipt.messageId) : undefined;
     const mode = receipt.is_wakeup ? 'wakeup' : receipt.msg_id || receipt.event_id ? 'reply' : 'proactive';
-    const notes = [t.modes[mode], ...((receipt.fallbacks as string[] | undefined) ?? []).map(f => t.fallback[f]).filter(Boolean)];
-    return `[sent${ref ? ` #${ref}` : ''} → ${this.describeTarget(destination, this.sessions.targets.get(targetKey(destination))?.label)}, ${notes.join(', ')}]`;
+    const fallbacks = (receipt.fallbacks as string[] | undefined) ?? [];
+    const notes = [t.modes[mode], ...fallbacks.map(f => t.fallback[f]).filter(Boolean)];
+    // Limits are stated in the receipt so the model sees what this send used and what remains.
+    const text = this.text;
+    const rule = text.rule(destination.kind);
+    let detail = '';
+    if (mode === 'reply' && typeof receipt.msg_id === 'string') {
+      const budget = this.sessions.budget(destination, receipt.msg_id);
+      if (budget) detail = budget.left > 0 && budget.msLeft > 0 ? text.replyLeft(budget.left, budget.msLeft)
+        : `${text.replyLeft(budget.left, budget.msLeft)}${text.comma}${text.replyUsedUp(rule)}`;
+    } else if (mode === 'proactive') detail = text.proactive(rule);
+    else if (mode === 'wakeup') detail = [fallbacks.includes('wakeup') ? text.viaWakeup : '', text.wakeup].filter(Boolean).join(text.comma);
+    return `[sent${ref ? ` #${ref}` : ''} → ${this.describeTarget(destination, this.sessions.targets.get(targetKey(destination))?.label)}, ${notes.join(', ')}${detail ? `${text.sep}${detail}` : ''}]`;
+  }
+
+  /** Platform rejections reach the model with the limit they hit, in its own words. */
+  private explain(error: unknown): unknown {
+    if (!(error instanceof QQOfficialApiError)) return error;
+    const reason = this.text.explain[Number(error.code)];
+    return reason ? new Error(`${reason} (${error.message})`) : error;
   }
 
   private enqueue<T>(operation: () => Promise<T>): Promise<T> {
@@ -320,13 +339,17 @@ export class QQOfficialWorld implements World {
       const { key, ...data } = incoming;
       const extra: JsonObject = key ? { dedupKey: key } : {};
       let text: string;
+      let urgent = false;
       if (incoming.kind === 'message') {
         extra.ref = String(this.nextRef);
-        text = renderIncoming(incoming.data, { t: this.view, timezone: this.options.context.timezone, ref: extra.ref as string,
-          target: incoming.target!, eventType: incoming.eventType, selfId: this.self?.id, refOf: id => this.refByMessage.get(id) }).text;
+        const rendered = renderIncoming(incoming.data, { t: this.view, timezone: this.options.context.timezone, ref: extra.ref as string,
+          target: incoming.target!, eventType: incoming.eventType, selfId: this.self?.id, refOf: id => this.refByMessage.get(id) });
+        text = rendered.text;
+        // As in the built-in QQ World: an @ in a group wakes at once; direct chats batch.
+        urgent = rendered.mentionedSelf && incoming.target!.kind !== 'c2c';
       } else text = renderNotice(incoming.eventType, incoming.data, incoming.target, this.view);
       const media = incoming.kind === 'message' ? await this.inlineMedia(incoming.data) : { ready: [], late: [] };
-      const saved = await this.push(incoming.kind, incoming.target, data, true, extra, text, media.ready);
+      const saved = await this.push(incoming.kind, incoming.target, data, true, extra, text, media.ready, urgent ? 'flush' : 'debounce');
       if (incoming.kind === 'message') this.remember(extra.ref as string, incoming.target!, incoming.messageId!, saved.cursor);
       for (const pending of media.late) {
         void pending.then(blob => blob && this.push('attachment', incoming.target, { messageId: incoming.messageId }, true,
@@ -345,7 +368,7 @@ export class QQOfficialWorld implements World {
   private sender(value?: QQOfficialTarget): string { return value ? `${this.id}.${targetKey(value)}` : this.id; }
 
   private async push(kind: 'message' | 'notice' | 'attachment' | 'sent' | 'attempt' | 'removed' | 'acknowledged', destination: QQOfficialTarget | undefined,
-    data: JsonObject, deliver = false, extra: JsonObject = {}, text?: string, blobs: BlobInput[] = []): Promise<EventEnvelope> {
+    data: JsonObject, deliver = false, extra: JsonObject = {}, text?: string, blobs: BlobInput[] = [], trigger: 'debounce' | 'flush' = 'debounce'): Promise<EventEnvelope> {
     if (!this.host) throw new Error('World is not running');
     const event = await this.host.pushEvent({
       type: `${this.id}.${kind}`, source: this.id, origin: 'external', ts: nowIso(this.options.context.timezone),
@@ -353,7 +376,7 @@ export class QQOfficialWorld implements World {
       text: text ?? this.recordLine(kind, destination, data),
       meta: { ...data, ...extra, target: destination, appId: this.appId },
       ...(blobs.length ? { blobs } : {}),
-    }, { deliver, trigger: 'debounce' });
+    }, { deliver, trigger });
     this.sessions.observe(event);
     return event;
   }
@@ -509,7 +532,7 @@ export class QQOfficialWorld implements World {
       return `[${this.text.removed} ${ref ? `#${ref}` : id}]`;
     }
     let anchors = this.delivery(destination, args);
-    if (!anchors.msg_id && !anchors.event_id && args.streamId === undefined) this.sessions.assertProactive(destination);
+    if (!anchors.msg_id && !anchors.event_id && !anchors.is_wakeup && args.streamId === undefined) this.sessions.assertProactive(destination);
     let payload: JsonObject;
     let suffix = 'messages';
     let streamData: JsonObject = {};
@@ -592,6 +615,7 @@ export class QQOfficialWorld implements World {
     try { sent = await sendWithFallback({ payload, signal: combined, fallback: args.fallback === undefined ? this.cfg.autoFallback : args.fallback === true,
       continuation: !!prior,
       proactive: () => this.prepare(destination, {}),
+      ...(destination.kind === 'c2c' ? { wakeup: () => this.prepare(destination, { is_wakeup: true }) } : {}),
       send: async final => {
         let body: JsonObject | FormData = final;
         if (multipart) {
@@ -600,7 +624,7 @@ export class QQOfficialWorld implements World {
           form.set('file_image', new Blob([new Uint8Array(multipart.bytes)]), multipart.name); body = form;
         }
         const proactive = !final.msg_id && !final.event_id && !prior;
-        if (proactive) await this.proactive(destination, combined);
+        if (proactive) await this.proactive(destination, combined, final.is_wakeup === true);
         try {
           const result = await this.client!.request('POST', `${route(destination)}/${suffix}`, body, combined);
           if (typeof result.id !== 'string' || !result.id) throw new Error('QQ accepted the request without a message id; delivery is unknown, do not resend');
@@ -663,13 +687,15 @@ export class QQOfficialWorld implements World {
     if (!Object.keys(anchors).length) {
       const recent = this.sessions.recentReply(destination);
       if (recent) return { msg_id: recent };
-      if (mode === 'reply') throw new Error('No recent reply anchor; choose proactive delivery or wait for a user message');
+      if (mode === 'reply') throw new Error(this.text.noReplyLeft(destination.kind));
+      // A recipient who turned proactive messages off can still get the wakeup message of the current period.
+      if (destination.kind === 'c2c' && this.sessions.proactiveBlocked(destination) && (args.fallback ?? this.cfg.autoFallback) !== false) return { is_wakeup: true };
     }
     return anchors;
   }
 
-  private async proactive(destination: QQOfficialTarget, signal: AbortSignal): Promise<void> {
-    this.sessions.assertProactive(destination);
+  private async proactive(destination: QQOfficialTarget, signal: AbortSignal, wakeup = false): Promise<void> {
+    if (!wakeup) this.sessions.assertProactive(destination);
     await waitUntil(this.lastProactiveAt + this.cfg.proactiveIntervalMs, signal);
   }
 

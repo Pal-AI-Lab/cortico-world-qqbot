@@ -59,6 +59,7 @@ beforeEach(async () => {
     if (mode === 'server-error' || (mode === 'stream-error' && Number(body.index) > 0)) { json(res, { code: 50001 }, 500); return; }
     if (mode === 'rate') { res.setHeader('Retry-After', '0'); json(res, { code: 50002 }, 429); return; }
     if (body.content === 'reject') { json(res, { code: 40034006 }, 403); return; }
+    if ((mode === 'refused' && !body.msg_id && !body.is_wakeup) || (mode === 'refused-all' && !body.msg_id)) { json(res, { code: 40054013 }, 403); return; }
     if ((mode === 'anchor' || mode === 'both') && body.msg_id) { json(res, { code: 304103 }, 400); return; }
     if ((mode === 'markdown' || mode === 'both') && (body.markdown || body.content_type === 'markdown')) { json(res, { code: 40034127 }, 403); return; }
     json(res, { id: body.stream_msg_id ?? `sent-${requests.length}` });
@@ -93,6 +94,36 @@ describe('proactive delivery and known targets', () => {
     expect(requests.at(-1)!.body).toMatchObject({ is_wakeup: true });
     expect(requests.at(-1)!.body.msg_id).toBeUndefined();
     expect(await tool('send_message', { to: destination, text: 'bad', delivery: 'proactive', reply_to: 'in' })).toMatchObject({ failed: true });
+  });
+
+  it('states the reply budget and names the limit once it is used up', async () => {
+    await event('C2C_MESSAGE_CREATE', { id: 'in', author: { user_openid: 'user' } });
+    const receipts = [];
+    for (let n = 0; n < 5; n++) receipts.push(await tool('send_message', { to: destination, text: 'hi' }));
+    expect(receipts[2]).toMatch(/被动回复。这条消息还能回 1 次，还剩 30 分钟\]$/);
+    expect(receipts[3]).toMatch(/被动回复。这条消息的回复次数已用完，之后再发就是主动消息\(私聊里对方每发一条消息，30 分钟内最多回复 4 次\)\]$/);
+    expect(receipts[4]).toMatch(/主动消息。现在没有还能回复的消息\(私聊里对方每发一条消息，30 分钟内最多回复 4 次\),这条按主动消息发出/);
+  });
+
+  it('sends the wakeup message when a direct chat refuses proactive messages', async () => {
+    await event('C2C_MESSAGE_CREATE', { id: 'in', author: { user_openid: 'user' }, timestamp: new Date(Date.now() - 40 * 60_000).toISOString() });
+    mode = 'refused';
+    const receipt = await tool('send_message', { to: destination, text: 'ping' });
+    expect(requests.map(r => r.body.is_wakeup)).toEqual([undefined, true]);
+    expect(receipt).toMatch(/召回消息。主动消息被拒，改发了召回消息，这一段时间的召回已用掉/);
+  });
+
+  it('goes straight to the wakeup message after the recipient turned proactive messages off', async () => {
+    await event('C2C_MESSAGE_CREATE', { id: 'in', author: { user_openid: 'user' }, timestamp: new Date(Date.now() - 40 * 60_000).toISOString() });
+    await event('C2C_MSG_REJECT', { openid: 'user' });
+    expect(typeof await tool('send_message', { to: destination, text: 'ping' })).toBe('string');
+    expect(requests.map(r => r.body.is_wakeup)).toEqual([true]);
+  });
+
+  it('explains a platform refusal with the limit it hit', async () => {
+    mode = 'refused-all';
+    const outcome = await tool('send_message', { to: destination, text: 'ping' }) as ToolOutcome;
+    expect(outcome).toMatchObject({ failed: true, text: expect.stringMatching(/^\[send failed\] 对方关闭了主动消息，等对方先开口 \(QQ bot API HTTP 403; code=40054013/) });
   });
 
   it('replies to the latest open message when the model gives only an address', async () => {

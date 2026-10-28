@@ -2,7 +2,7 @@
   "tools": [
     {
       "name": "qqbot_send_message",
-      "description": "发一条 QQ 消息：文字，可以带一张图片(image),或者单独发一条语音(voice)。reply_to 填消息编号，回复那一条，会话随之确定;quote=true 时在 QQ 里显示引用。不填 reply_to 时自动回复这个会话里还能回复的最近一条，没有就按主动消息发送;delivery=proactive 强制主动消息。",
+      "description": "发一条 QQ 消息：文字，可以带一张图片或表情包(image),或者单独发一条语音(voice)。reply_to 填消息编号，回复那一条，会话随之确定;quote=true 时在 QQ 里显示引用。不填 reply_to 时自动回复这个会话里还能回复的最近一条，没有就按主动消息发送;delivery=proactive 强制主动消息。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -65,7 +65,7 @@
     },
     {
       "name": "qqbot_send_media",
-      "description": "发视频、文件，或一次发多张图片(items,最多 8 项)。url 与 blob(log:/mem: 句柄)二选一;fileType:1 图片、2 视频、3 语音、4 文件。部分失败时已发出的不会重发。",
+      "description": "发视频、文件，或一次发多张图片(items,最多 8 项)。url 与 blob(log:/mem: 句柄)二选一;fileType:1 图片、2 视频、3 语音、4 文件。每一项各算一条消息，部分失败时已发出的不会重发。",
       "parameters": {
         "type": "object",
         "properties": {
@@ -214,7 +214,7 @@
     },
     {
       "name": "qqbot_delete_message",
-      "description": "撤回你发过的一条消息，填它的编号。",
+      "description": "撤回你发过的一条消息，填它的编号。发出超过 2 分钟的撤回不了。",
       "parameters": {
         "type": "object",
         "properties": {

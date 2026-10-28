@@ -10,10 +10,21 @@ export interface SessionTarget {
   proactive: 'unknown' | 'allowed' | 'blocked';
 }
 
+/**
+ * How many replies one incoming message allows, and for how long. QQ documents 60 minutes and 4 replies for
+ * C2C, 5 minutes and 5 replies for groups and channels (bot.q.qq.com/wiki/develop/api-v2/server-inter/message/overview.html).
+ * A direct-chat reply 31 minutes later was confirmed on a phone; 30 minutes is the window chosen as safe.
+ * Groups and channels keep a margin under 5 minutes.
+ */
+export function replyRule(kind: QQOfficialTarget['kind']): { limit: number; windowMs: number } {
+  return kind === 'c2c' ? { limit: 4, windowMs: 30 * 60_000 } : { limit: 5, windowMs: 285_000 };
+}
+
 /** Rebuilt once from durable events. Sending does not rescan the archive. */
 export class QQSessionState {
   readonly targets = new Map<string, SessionTarget>();
   private sequences = new Map<string, number>();
+  private arrivals = new Map<string, number>();
   private key(target: QQOfficialTarget, anchors: JsonObject): string {
     return JSON.stringify([targetKey(target), anchors.msg_id ?? null, anchors.event_id ?? null, anchors.is_wakeup === true]);
   }
@@ -38,6 +49,7 @@ export class QQSessionState {
       session.lastMessageId = meta.messageId;
       const at = typeof data?.timestamp === 'string' ? Date.parse(data.timestamp) : NaN;
       session.messageAt = Number.isFinite(at) ? Math.min(at, Date.parse(event.ts)) : Date.parse(event.ts);
+      this.arrivals.set(meta.messageId, session.messageAt);
     }
     const type = String(meta?.eventType);
     if (['C2C_MSG_REJECT', 'GROUP_MSG_REJECT', 'FRIEND_DEL', 'GROUP_DEL_ROBOT'].includes(type)) session.proactive = 'blocked';
@@ -46,14 +58,18 @@ export class QQSessionState {
   }
   recentReply(target: QQOfficialTarget): string | undefined {
     const s = this.targets.get(targetKey(target));
-    // QQ documents 60 minutes and 4 replies for C2C, 5 minutes and 5 replies for groups and channels
-    // (bot.q.qq.com/wiki/develop/api-v2/server-inter/message/overview.html). Direct chats were confirmed to
-    // accept a reply 31 minutes later; 30 minutes is the window chosen as safe. Others keep a margin under 5.
-    const limit = target.kind === 'c2c' ? 4 : 5;
-    const window = target.kind === 'c2c' ? 30 * 60_000 : 285_000;
-    return s?.lastMessageId && s.messageAt && Date.now() - s.messageAt < window
-      && this.sequence(target, { msg_id: s.lastMessageId }) < limit ? s.lastMessageId : undefined;
+    if (!s?.lastMessageId) return undefined;
+    const budget = this.budget(target, s.lastMessageId);
+    return budget && budget.left > 0 && budget.msLeft > 0 ? s.lastMessageId : undefined;
   }
+  /** Replies left on one incoming message; undefined for a message this account never received. */
+  budget(target: QQOfficialTarget, messageId: string): { left: number; msLeft: number } | undefined {
+    const at = this.arrivals.get(messageId);
+    if (at === undefined) return undefined;
+    const { limit, windowMs } = replyRule(target.kind);
+    return { left: Math.max(0, limit - this.sequence(target, { msg_id: messageId })), msLeft: Math.max(0, windowMs - (Date.now() - at)) };
+  }
+  proactiveBlocked(target: QQOfficialTarget): boolean { return this.targets.get(targetKey(target))?.proactive === 'blocked'; }
   assertProactive(target: QQOfficialTarget): void {
     if (this.targets.get(targetKey(target))?.proactive === 'blocked') {
       throw new Error('QQ proactive messages are disabled for this target; wait for a user reply or enable Allow proactive messages in QQ');

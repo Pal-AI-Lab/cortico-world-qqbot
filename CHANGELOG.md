@@ -4,6 +4,13 @@
 
 ## Unreleased
 
+- Published as `cortico-world-qqbot` by Pal AI Lab. The World id is now `qqbot` (tools `qqbot_*`, events `qqbot.*`, config `worlds.qqbot`, secret `CORTICO_QQBOT_APP_SECRET`); installs of `cortico-world-qq-official` need to bind again.
+- The prompt says Coo is connected to a QQ bot entry, lists QQ's limits on it with a way to work with each, and asks Coo to keep stickers in its memory under descriptive names and send them often.
+- Send receipts state the delivery mode and what remains: replies left on the message and minutes left, or the rule that made a message proactive. Platform rejections carry a plain explanation of the limit they hit.
+- A refused proactive message in a direct chat (40054013 or 40034105) is sent once as the period's wakeup message; a recipient who turned proactive messages off gets the wakeup message directly.
+- An @ in a group or channel wakes the model at once; direct chats still batch.
+- Render faces written in the older `[<face,id=13/>]` form.
+
 - Render model-facing text in the shape of Cortico's built-in QQ World: one line per message (`#n [conversation HH:MM] sender: text`) with faces by name, quotes, mentions and attachment placeholders; notices, send receipts and history as short lines instead of raw JSON. Original fields stay in `meta.data`.
 - Address tools with `to` (`c2c:<OpenID>` and so on) and short message numbers: `reply_to`, `message` and `before` take `#n`. `send_message` takes `text` plus an optional `image` or `voice`; `history` is now `read_history`; `read_attachment` takes a message number and a 1-based index. Object targets from earlier reminders are still accepted.
 - List known conversations and the bot's QQ name in the environment prompt.

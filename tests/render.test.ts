@@ -8,11 +8,11 @@ const base = { t, timezone: 'UTC', ref: '7', refOf: (id: string) => (id === 'kno
 describe('model-facing message lines', () => {
   it('renders a direct message with faces, a known quote and attachment placeholders', () => {
     const { text } = renderIncoming({
-      content: `在吗${face('[呲牙]')}`, timestamp: '2026-10-27T08:05:00+00:00', author: { user_openid: 'ABCDEF0123456789' },
+      content: `在吗${face('[呲牙]')}[<face,id=13/>]`, timestamp: '2026-10-27T08:05:00+00:00', author: { user_openid: 'ABCDEF0123456789' },
       message_type: 103, message_reference: { message_id: 'known' }, msg_elements: [{ content: 'old' }],
       attachments: [{ content_type: 'image/png', url: 'u' }, { content_type: 'voice', url: 'v' }, { content_type: 'file', filename: 'a.pdf', url: 'f' }],
     }, { ...base, target: { kind: 'c2c', id: 'ABCDEF0123456789' }, eventType: 'C2C_MESSAGE_CREATE' });
-    expect(text).toBe('#7 [私聊 08:05] 用户456789: [回复#3] 在吗 [表情:呲牙] [图片] [语音] [文件 a.pdf]');
+    expect(text).toBe('#7 [私聊 08:05] 用户456789: [回复#3] 在吗 [表情:呲牙] [表情:呲牙] [图片] [语音] [文件 a.pdf]');
   });
 
   it('quotes an unrecorded message inline and marks group @-messages as addressed to the bot', () => {

@@ -13,7 +13,7 @@ export interface QQOfficialClientOptions {
 }
 
 export class QQOfficialApiError extends Error {
-  readonly kind: 'anchor' | 'markdown' | 'newline' | 'rate' | 'proactive' | 'upload' | 'other';
+  readonly kind: 'anchor' | 'markdown' | 'newline' | 'rate' | 'proactive' | 'refused' | 'wakeup' | 'upload' | 'other';
   constructor(readonly status: number, readonly code: unknown, readonly traceId: string | null, readonly retryAfter: string | null, detail = '') {
     super(`QQ bot API HTTP ${status}; code=${typeof code === 'number' || typeof code === 'string' ? code : 'unknown'}; trace=${traceId ?? 'none'}; retry-after=${retryAfter ?? 'none'}`);
     // Interpret known rejection reasons without exposing platform response text (which may contain credentials).
@@ -22,7 +22,8 @@ export class QQOfficialApiError extends Error {
       : n === 40034127 || /不允许发送原生\s*markdown/i.test(detail) ? 'markdown'
       : /流式消息md分片需要.*结束/.test(detail) ? 'newline'
       : status === 429 || [22009, 50002, 40034100].includes(n) ? 'rate'
-      : n === 40034105 ? 'proactive' : n === 40093001 ? 'upload' : 'other';
+      : n === 40034105 ? 'proactive' : n === 40054013 ? 'refused' : [40034122, 40034123].includes(n) ? 'wakeup'
+      : n === 40093001 ? 'upload' : 'other';
   }
 
   get rejected(): boolean { return this.code !== 'invalid_json' && ((this.status >= 400 && this.status < 500 && this.status !== 408) || (this.status >= 200 && this.status < 300)); }
