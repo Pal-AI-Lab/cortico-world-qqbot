@@ -1,6 +1,6 @@
 {
   "name": "cortico-world-qqbot",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "type": "module",
   "description": "Connects Coo to a QQ bot entry: QR binding, direct and group messages, stickers and media, with QQ's reply limits visible to the model",
   "license": "AGPL-3.0-or-later",
@@ -42,7 +42,7 @@
   "main": "./src/index.ts",
   "cortico": {
     "displayName": "QQ Bot",
-    "icon": "assets/icon.png",
+    "icon": "assets/icon.svg",
     "kind": "world",
     "api": 6,
     "webUiClient": "src/webui.js",

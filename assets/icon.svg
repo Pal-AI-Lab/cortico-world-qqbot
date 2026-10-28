@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-label="QQ Bot">
+  <title>QQ Bot</title>
+  <rect width="256" height="256" rx="56" fill="#F4F5F4"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="#00A870" stroke-width="10" d="M128 54V74"/>
+    <circle cx="128" cy="46" r="11" fill="#00A870" stroke="none"/>
+    <path stroke="#1B1626" stroke-width="22" d="M88 76H168A34 34 0 0 1 202 110V142A34 34 0 0 1 168 176H120L82 206L90 176H88A34 34 0 0 1 54 142V110A34 34 0 0 1 88 76Z"/>
+    <ellipse cx="104" cy="120" rx="10" ry="13" fill="#00A870" stroke="none"/>
+    <ellipse cx="152" cy="120" rx="10" ry="13" fill="#00A870" stroke="none"/>
+    <path stroke="#00A870" stroke-width="10" d="M110 148Q128 160 146 148"/>
+  </g>
+</svg>

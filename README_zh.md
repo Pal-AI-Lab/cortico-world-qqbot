@@ -1,7 +1,7 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/icon.png" alt="QQ 机器人" width="88" height="88">
+  <img src="https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/icon.svg" alt="QQ 机器人" width="88" height="88">
 </p>
 
 # QQ 机器人(cortico-world-qqbot)
@@ -23,11 +23,11 @@ World ID 为 `qqbot`,可以和 OneBot 协议的 `qq` World 同时装。每份部
 
 以下截图使用扩展的真实面板代码、Cortico 界面组件与示例数据渲染，不含有效扫码授权、真实机器人凭证或私人聊天。
 
-![QQ 扫码连接面板](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/screenshots/connection-zh.png)
+![QQ 扫码连接面板](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/screenshots/connection-zh.png)
 
-![连接成功后隐藏二维码](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/screenshots/connected-zh.png)
+![连接成功后隐藏二维码](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/screenshots/connected-zh.png)
 
-![凭证与接入配置](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/screenshots/configuration-zh.png)
+![凭证与接入配置](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.1/assets/screenshots/configuration-zh.png)
 
 ## 安装
 

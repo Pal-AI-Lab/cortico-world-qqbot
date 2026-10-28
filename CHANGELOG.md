@@ -2,6 +2,10 @@
 
 # Changelog
 
+## 0.3.1
+
+- New market icon in the house style of Pal AI Lab extensions.
+
 ## 0.3.0
 
 - Published as `cortico-world-qqbot` by Pal AI Lab. The World id is now `qqbot` (tools `qqbot_*`, events `qqbot.*`, config `worlds.qqbot`, secret `CORTICO_QQBOT_APP_SECRET`); installs of `cortico-world-qq-official` need to bind again.
