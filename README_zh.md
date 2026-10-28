@@ -1,43 +1,43 @@
 <!-- Owner: src/definition.ts, src/world.ts, src/config.ts, package.json -->
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/icon.png" alt="QQ Official World" width="88" height="88">
+  <img src="https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/icon.png" alt="QQ 机器人" width="88" height="88">
 </p>
 
-# QQ Official World
+# QQ 机器人(cortico-world-qqbot)
 
-[![npm](https://img.shields.io/npm/v/cortico-world-qq-official?color=1d4ed8)](https://www.npmjs.com/package/cortico-world-qq-official)
+[![npm](https://img.shields.io/npm/v/cortico-world-qqbot?color=1d4ed8)](https://www.npmjs.com/package/cortico-world-qqbot)
 ![Cortico World API 6](https://img.shields.io/badge/Cortico_World-API_6-1d4ed8)
 ![Node.js 22+](https://img.shields.io/badge/Node.js-22%2B-19815e)
 [![AGPL-3.0-or-later](https://img.shields.io/badge/license-AGPL--3.0--or--later-64748b)](LICENSE)
 
 [English](README.md)
 
-通过 QQ 官方接口接入 Cortico 的 World 扩展。使用 WebSocket 网关或签名 Webhook 接收事件，向 Persona 提供消息工具。支持手动填写凭证，也支持 QQ 官方机器人绑定页面。
+让 Coo 连上一个 QQ 机器人入口，经它在 QQ 私聊和群里收发消息。主要面向 Coopanion,也能装在任何 Cortico 部署里。消息走 QQ 官方机器人接口，不需要在电脑上挂 QQ 客户端，也没有个人号被封的风险。
 
-World ID 为 `qqofficial`，可与使用其他协议、ID 为 `qq` 的 `cortico-world-qq` 共存。每份部署支持配置一个 QQ 机器人。
+World ID 为 `qqbot`,可以和 OneBot 协议的 `qq` World 同时装。每份部署连接一个机器人账号。
 
-作者：[leafliber](https://github.com/leafliber) · [npm](https://www.npmjs.com/package/cortico-world-qq-official) · [问题反馈](https://github.com/leafliber/cortico-world-qq-official/issues) · [更新日志](CHANGELOG.md)。这是使用 QQ 官方接口的社区扩展，不是腾讯或 Cortico 官方出品。
+由 [Pal AI Lab](https://github.com/Pal-AI-Lab) 维护，最初由 [leafliber](https://github.com/leafliber) 编写。[npm](https://www.npmjs.com/package/cortico-world-qqbot) · [问题反馈](https://github.com/Pal-AI-Lab/cortico-world-qqbot/issues) · [更新日志](CHANGELOG.md)。从 `cortico-world-qq-official` 换过来的部署要重新扫码绑定。
 
 ## 界面预览
 
 以下截图使用扩展的真实面板代码、Cortico 界面组件与示例数据渲染，不含有效扫码授权、真实机器人凭证或私人聊天。
 
-![QQ 扫码连接面板](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/connection-zh.png)
+![QQ 扫码连接面板](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/screenshots/connection-zh.png)
 
-![连接成功后隐藏二维码](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/connected-zh.png)
+![连接成功后隐藏二维码](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/screenshots/connected-zh.png)
 
-![凭证与接入配置](https://raw.githubusercontent.com/leafliber/cortico-world-qq-official/v0.2.3/assets/screenshots/configuration-zh.png)
+![凭证与接入配置](https://raw.githubusercontent.com/Pal-AI-Lab/cortico-world-qqbot/v0.3.0/assets/screenshots/configuration-zh.png)
 
 ## 安装
 
-需要 Node.js 22 或更高版本；常见音频格式的收发转码和音频测试需要系统安装 FFmpeg（也可配置 `ffmpegPath`）。SILK 编解码器随 npm 依赖安装。主包使用 **Cortico World API 6**，开发依赖固定为 `cortico@0.2.6` SDK。
+需要 Node.js 22 或更高版本。发语音和把收到的语音交给模型需要系统装有 FFmpeg（也可配置 `ffmpegPath`）;其余功能不需要。SILK 编解码器随 npm 依赖安装。主包使用 **Cortico World API 6**，开发依赖固定为 `cortico@0.2.6` SDK。
 
-在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qq-official@0.2.3`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
+在 Cortico 或 Coopanion 的扩展页选择 **World**，从 npm 安装 `cortico-world-qqbot`，然后重启 Core。已有 Cortico 安装也可通过命令行安装：
 
 ```sh
 cd extensions
-corepack pnpm add cortico-world-qq-official@0.2.3
+corepack pnpm add cortico-world-qqbot
 ```
 
 在源码目录运行：
@@ -50,7 +50,7 @@ pnpm verify
 
 在 Cortico 或 Coopanion 扩展页选择 **World → 本机目录**，选择本仓库，重启 Core 后加载。运行 `npm pack --ignore-scripts` 可生成包含运行源码、浏览器面板和能力声明的安装包。
 
-旧宿主仍使用 **World API 5** 时，可下载 [GitHub Releases](https://github.com/leafliber/cortico-world-qq-official/releases) 中的 API 5 兼容包，也可从源码生成：
+旧宿主仍使用 **World API 5** 时，可下载 [GitHub Releases](https://github.com/Pal-AI-Lab/cortico-world-qqbot/releases) 中的 API 5 兼容包，也可从源码生成：
 
 ```sh
 pnpm pack:api5
@@ -60,21 +60,41 @@ pnpm pack:api5
 
 ## 接入
 
-打开 QQ Official World 的「连接」页生成二维码，使用手机 QQ 扫码，在官方页面创建或选择机器人并确认授权。二维码由扩展本地生成。扩展会自动查询结果、保存凭证，并启用或重新连接 World。获取凭证后立即移除二维码，消息通道就绪后明确显示「连接成功」；连接失败时保留凭证并提供重试入口。在 Core 持续运行期间，刷新面板后也会继续等待当前任务。绑定任务有效期为十分钟。
+在 World 的「连接」页点「用手机 QQ 扫码」,用手机 QQ 扫码后选择**新建机器人**并确认授权。页面会自动等结果、保存凭证并连上，消息通道就绪后显示「连接成功」。
 
-AppID、AppSecret 和接入参数集中在「配置」页管理，也可在这里手动填写凭证。AppSecret 只显示已配置状态，不回显明文；绑定密钥和解密后的 AppSecret 留在 Core 端，不会返回浏览器。
+- 二维码大约 3 分钟过期，过期后自动换新码，连续换 3 次后等你点「刷新二维码」。
+- 拿到凭证后先试着取一次接口令牌;取不到(选了已有机器人时出现过)就提示重扫，不保存这份凭证。
+- 扫码建出的是个人机器人：默认只有你自己能私聊;只能拉进你当群主或管理员的群;别人要私聊它，得在 QQ 开放平台「开发设置」里加成体验用户。
+- 机器人没连上时，手机 QQ 里会显示它「不在线」。
 
-绑定链接使用 QQ 官方的 `/qqbot/openclaw/connect.html` 页面。本扩展属于 Cortico，与 OpenClaw 项目无关，只复用 QQ 开放的绑定和机器人接口，不依赖或集成 OpenClaw。绑定取得机器人的 AppID 和 AppSecret 后，消息收发直接调用 QQ 官方接口，不会连接或控制 OpenClaw 实例。
+AppID、AppSecret 和接入参数在「配置」页管理，也可以手动填写。AppSecret 只显示已配置状态，不回显;AppID 存在 `worlds.qqbot.appId`,AppSecret 通过 `WorldContext.storeSecret` 存为部署环境里的 `CORTICO_QQBOT_APP_SECRET`。AppID 不变时 AppSecret 留空会保留原值;换 AppID 必须同时给新的 AppSecret。
 
-AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.storeSecret` 保存为部署环境中的 `CORTICO_QQOFFICIAL_APP_SECRET`。AppID 不变时，AppSecret 留空会保留已有值；更换 AppID 必须同时提供新的 AppSecret。保存配置时，已启用的 World 会自动应用变更。未启用的 World 手动保存凭证后，可在「连接」页选择「连接 QQ」。
+绑定页是 QQ 的 `/qqbot/openclaw/connect.html`。本扩展与 OpenClaw 项目无关，只复用 QQ 开放的绑定和机器人接口。
 
-默认传输方式为 `websocket`，Intents 为 `33554432`，用于 QQ 群和单聊事件。其他事件需要根据机器人获批的订阅范围设置 Intents。主动消息、Markdown、键盘、媒体和撤回仍受 QQ 平台权限与额度限制。
+默认走 WebSocket 网关，Intents 为 `33554432`(私聊、群 @ 和群全量消息)。群里要收非 @ 的消息，由群主在机器人资料页把「机器人可获取的群聊消息范围」设成全部消息。
 
-使用 Webhook 时，将 `transport` 设置为 `webhook`，让 QQ 回调 URL 指向配置的路径。默认监听 `127.0.0.1:6196/qqofficial/callback`，通过 HTTPS 反向代理提供公网入口。验证请求使用官方 Ed25519 握手；事件验签使用原始请求体。Core 保存事件成功后才返回确认，保存失败返回 HTTP 503，供平台重试。Webhook 的连接状态表示本地服务器已监听，不代表已经收到 QQ 回调。
+使用 Webhook 时把 `transport` 设为 `webhook`,让 QQ 回调地址指向配置的路径。默认监听 `127.0.0.1:6196/qqbot/callback`,公网入口要自己用 HTTPS 反向代理(QQ 只接受 80、443、8080、8443 端口)。Webhook 的连接状态只表示本地已监听，不代表已收到 QQ 回调。
+
+## 限制与表情包
+
+QQ 对机器人入口的限制写在环境提示词里，每条附带应对方法;每次发送的回执写明这条按被动回复、主动消息还是召回发出，以及还剩几次、还剩多久;平台拒绝时，失败文本写出撞上的是哪一条。
+
+| 限制 | 依据 |
+| --- | --- |
+| 私聊：对方每发一条消息，30 分钟内最多回复 4 次 | 官方文档为 60 分钟 4 次;10-27 实测 31 分钟后回复仍能送达，取 30 分钟留余量 |
+| 群和频道：一条消息之后 5 分钟内最多回复 5 次 | 官方文档 |
+| 超出范围算主动消息，对方可以关闭接收 | 官方文档;10-27 实测私聊主动消息能发 |
+| 召回消息只在私聊有，对方最后一次找你后的 30 天分四段，每段 1 条 | 官方文档;实测同一段第二条返回 40034122 |
+| 发出超过 2 分钟的消息撤回不了 | 官方文档 |
+| 只能把表情包当图片发，没有小黄脸、戳一戳、贴表情 | 官方文档 |
+
+省略回复对象时，先回复这个会话里最近一条还能回复的消息，没有才发主动消息。私聊主动消息被拒(40054013 拒收、40034105 无权限)或对方关了主动消息时，改发这一段的召回消息。
+
+提示词请 Coo 在自己的记忆里给表情包单独留一个地方，收图时在能起名的地方写清画面和适用场合，聊天时积极配图，文字和表情包放在同一条里发。存在哪、怎么起名由所用 Persona 决定;没有收藏能力的 Persona 照常工作。
 
 ## 事件流
 
-消息投递为 `qqofficial.message`，互动、关系变化及其他平台事件投递为 `qqofficial.notice`。两者均为 `origin: external`、`trigger: debounce`；Core 负责保存和批处理，Persona 决定是否行动。原始正文、提及、引用、附件和 `message_scene` 保留在 `meta.data`。
+消息投递为 `qqbot.message`，互动、关系变化及其他平台事件投递为 `qqbot.notice`。两者均为 `origin: external`、`trigger: debounce`；Core 负责保存和批处理，Persona 决定是否行动。原始正文、提及、引用、附件和 `message_scene` 保留在 `meta.data`。
 
 进入模型上下文的正文与 Cortico 内建 QQ World 同形，每条一行：
 
@@ -97,24 +117,24 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 
 消息按平台事件类型、目标和消息 ID 去重；其他事件有事件 ID 时按事件 ID 去重。内存最多保留一万条去重标识，启动时从最近一万条 World 存档事件恢复。WebSocket 在当前 World 实例内重连时使用最后已保存的序号恢复；进程重启后创建新的网关会话。
 
-发送序号预留 `qqofficial.attempt` 以及平台回执 `qqofficial.sent`、`qqofficial.removed`、`qqofficial.acknowledged` 均以 `deliver: false` 存档，因此不会再次唤醒 Persona。发送记录包含请求和平台响应；平台接受请求不代表收件人已读。HTTP 401 会触发一次刷新凭证后的重试。明确的限流最多重试两次，单次等待不超过五秒。自动降级仅处理明确拒绝：回复依据过期后改为主动发送、Markdown 权限不足后改为纯文本。内容审核拒绝、权限或额度不足不会被绕过。超时、HTTP 5xx 或响应缺少消息 ID 时保留“发送结果未知”，不自动重发。
+发送序号预留 `qqbot.attempt` 以及平台回执 `qqbot.sent`、`qqbot.removed`、`qqbot.acknowledged` 均以 `deliver: false` 存档，因此不会再次唤醒 Persona。发送记录包含请求和平台响应；平台接受请求不代表收件人已读。HTTP 401 会触发一次刷新凭证后的重试。明确的限流最多重试两次，单次等待不超过五秒。自动降级仅处理明确拒绝：回复依据过期后改为主动发送、Markdown 权限不足后改为纯文本。内容审核拒绝、权限或额度不足不会被绕过。超时、HTTP 5xx 或响应缺少消息 ID 时保留“发送结果未知”，不自动重发。
 
 ## 工具
 
 | 工具 | 契约 |
 | --- | --- |
-| `qqofficial_send_message` | 发送文字，可带一张图片（`image`）或单独一条语音（`voice`），取值为 `log:`/`mem:` 句柄或公网 URL；`quote=true` 显示引用；可带平台原生键盘对象。 |
-| `qqofficial_send_media` | 发送视频、文件或多张图片：公开 URL 或宿主管理的 `log:`/`mem:` 附件，二者选一；不接受本地路径；类型 1 图片、2 视频、3 语音、4 文件；`items` 可顺序发送至多 8 项。 |
-| `qqofficial_stream_message` | `followModel=true` 将下一轮模型公开正文发送到选定目标；也支持手动 C2C 分片。 |
-| `qqofficial_delete_message` | 撤回指定目标中机器人发送的消息。 |
-| `qqofficial_list_targets` | 列出当前 AppID 的已知会话、近期回复依据和主动接收状态。 |
-| `qqofficial_read_history` | 按行返回当前 AppID 的消息历史，可按会话（`to`）筛选，`before` 填编号往前翻。 |
-| `qqofficial_read_attachment` | 按消息编号和从 1 开始的附件序号读取内容；`quoted=true` 读引用消息里的附件，语音转换为 WAV 后交给 Core。 |
-| `qqofficial_ack_interaction` | 使用 0 至 5 的结果码明确确认平台互动事件。 |
+| `qqbot_send_message` | 发送文字，可带一张图片（`image`）或单独一条语音（`voice`），取值为 `log:`/`mem:` 句柄或公网 URL；`quote=true` 显示引用；可带平台原生键盘对象。 |
+| `qqbot_send_media` | 发送视频、文件或多张图片：公开 URL 或宿主管理的 `log:`/`mem:` 附件，二者选一；不接受本地路径；类型 1 图片、2 视频、3 语音、4 文件；`items` 可顺序发送至多 8 项。 |
+| `qqbot_stream_message` | `followModel=true` 将下一轮模型公开正文发送到选定目标；也支持手动 C2C 分片。 |
+| `qqbot_delete_message` | 撤回指定目标中机器人发送的消息。 |
+| `qqbot_list_targets` | 列出当前 AppID 的已知会话、近期回复依据和主动接收状态。 |
+| `qqbot_read_history` | 按行返回当前 AppID 的消息历史，可按会话（`to`）筛选，`before` 填编号往前翻。 |
+| `qqbot_read_attachment` | 按消息编号和从 1 开始的附件序号读取内容；`quoted=true` 读引用消息里的附件，语音转换为 WAV 后交给 Core。 |
+| `qqbot_ack_interaction` | 使用 0 至 5 的结果码明确确认平台互动事件。 |
 
 地址写在 `to`；`reply_to` 填消息编号，回复那一条并沿用它的会话，省略 `to`。没有记录的编号按 QQ 消息 ID 原样作为回复依据。回复事件使用 `eventId`，与 `reply_to` 互斥。`delivery` 支持 `reply`、`proactive`、`auto`、`wakeup`：`auto` 在保守的近期窗口和已使用序号范围内选取回复依据，否则主动发送；`wakeup` 仅用于 QQ 单聊，由 QQ 判定唤醒权限。省略 `delivery` 和回复依据时按 `auto` 处理。已知主动接收关闭或已删除机器人的目标会被本地拒绝，普通被动回复不受这一检查限制。目标状态、发送序号从当前账号的事件存档恢复。
 
-定时通知复用宿主已有的 `alarm_set`、`alarm_list`、`alarm_cancel`；提醒内容保存 `qqofficial_list_targets` 返回的会话地址，唤醒后调用发送工具并指定 `delivery=proactive`。扩展不另起调度器。默认在上次主动发送尝试结束后等待三秒，再发起下一次；被拒绝的请求和降级重试同样受此间隔限制。QQ 的权限、配额和接收方设置仍可能拒绝请求。
+定时通知复用宿主已有的 `alarm_set`、`alarm_list`、`alarm_cancel`；提醒内容保存 `qqbot_list_targets` 返回的会话地址，唤醒后调用发送工具并指定 `delivery=proactive`。扩展不另起调度器。默认在上次主动发送尝试结束后等待三秒，再发起下一次；被拒绝的请求和降级重试同样受此间隔限制。QQ 的权限、配额和接收方设置仍可能拒绝请求。
 
 `followModel=true` 必须明确选择目标；下一轮只转发公开正文，不包含推理和工具参数。带回复依据的 C2C 按间隔发送，主动通知、群、频道和频道私信缓冲后发普通消息；流式接口明确返回 404/405 时也缓冲降级。轮次结束、调用其他工具、取消、切换会话或空闲超时会结束流。手动 C2C 分片使用 `content`，续片沿用返回的 `streamId`，`finish` 默认为 true，目标、格式、回复依据和序号保持不变。已发送内容不会因后续失败而整段重发；结果未知的续片会在进程重启后继续禁止重放。
 
@@ -124,15 +144,13 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 
 出站语音通过 FFmpeg 转为 24 kHz 单声道 PCM，再编码为 Tencent SILK；入站 SILK 和常见音频转为 WAV，最多十分钟。FFmpeg 缺失或格式损坏会明确报错。音频 URL 下载校验公网地址并固定 DNS 解析，每次重定向重新检查；解码器禁用嵌套文件和网络协议。扩展不内置语音识别，Core 决定当前模型能否读取音频。互动确认仍需明确调用工具，并满足 QQ 的确认时限。
 
-从 **0.2.3** 起，`qqofficial_send_media` 只接收公开 HTTP(S) URL 或 Core 管理的已有 `log:` / `mem:` 附件，不再打开模型指定的文件系统路径。旧的 `path` 参数、`file:` URL、伪装成附件句柄的路径穿越会被拒绝，批量发送同样受限。`fileName` 仅作为显示名称。FFmpeg 仅通过标准输入接收音频字节，并只启用 `pipe` 协议；模型不能指定命令或转码参数。FFmpeg 仍声明 `external-setup` 标签。
+从 **0.2.3** 起，`qqbot_send_media` 只接收公开 HTTP(S) URL 或 Core 管理的已有 `log:` / `mem:` 附件，不再打开模型指定的文件系统路径。旧的 `path` 参数、`file:` URL、伪装成附件句柄的路径穿越会被拒绝，批量发送同样受限。`fileName` 仅作为显示名称。FFmpeg 仅通过标准输入接收音频字节，并只启用 `pipe` 协议；模型不能指定命令或转码参数。
 
 发送本地图片、音频、视频或文档时，请先通过宿主的附件流程上传，或使用宿主工具生成的附件，再把返回的 `log:` / `mem:` 句柄传给 `blob`，原文件名传给 `fileName`，并指定 `fileType`（1 图片、2 视频、3 语音、4 文件）。语音转码、频道图片上传、分块上传和批量发送均保留。原先使用 `path` 的脚本需要改用 `blob` 或公开 `url`，扩展不提供开启任意文件读取的选项。
 
-新版包不再声明 `unsafe`。Cortico 会保留旧版本曾声明的警告标签，直到官方维护者批准撤销，因此审核期间仍可能显示旧警告。
-
 ## 配置
 
-以下配置位于 `worlds.qqofficial`，默认值和校验见 [`src/config.ts`](src/config.ts)。
+以下配置位于 `worlds.qqbot`，默认值和校验见 [`src/config.ts`](src/config.ts)。
 
 | 配置 | 默认值 | 生效方式 |
 | --- | --- | --- |
@@ -141,7 +159,7 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 | `transport` | `websocket` | `websocket` 或 `webhook`，重启后生效。 |
 | `sandbox` | `false` | QQ 沙箱 API 地址，重启后生效。 |
 | `intents` | `33554432` | 网关事件订阅位掩码，重启后生效。 |
-| `webhook.host`、`port`、`path` | `127.0.0.1`、`6196`、`/qqofficial/callback` | 监听地址，重启后生效。 |
+| `webhook.host`、`port`、`path` | `127.0.0.1`、`6196`、`/qqbot/callback` | 监听地址，重启后生效。 |
 | `webhook.maxBodyBytes` | `1048576` | 回调字节数上限，重启后生效。 |
 | `timeoutMs` | `20000` | 网络请求超时毫秒数，重启后生效。 |
 | `reconnectMs`、`maxReconnectMs` | `1000`、`30000` | 网关重连退避的毫秒数范围，重启后生效。 |
@@ -164,8 +182,8 @@ AppID 保存到 `worlds.qqofficial.appId`；AppSecret 通过 `WorldContext.store
 首次自动发布前，在 npm 包的设置中配置 [Trusted Publisher](https://docs.npmjs.com/trusted-publishers/)：
 
 - Provider：**GitHub Actions**
-- Organization or user：`leafliber`
-- Repository：`cortico-world-qq-official`
+- Organization or user：`Pal-AI-Lab`
+- Repository：`cortico-world-qqbot`
 - Workflow filename：`release.yml`
 - Environment name：留空
 - Allowed actions：允许通过 `npm publish` 直接发布
