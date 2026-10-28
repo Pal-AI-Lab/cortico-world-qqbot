@@ -20,7 +20,7 @@ const { manifest } = parsed;
 if (manifest.kind !== 'world' || manifest.api !== EXTENSION_API_VERSIONS.world) throw new Error('The manifest must target the installed World contract');
 if (!isWorldDefinition(definition)) throw new Error('Invalid World definition');
 if (!manifest.webUiClient || !extensionPackageFile(root, manifest.webUiClient)) throw new Error('Missing WebUI bundle');
-const scratchDir = mkdtempSync(join(tmpdir(), 'qqofficial-check-'));
+const scratchDir = mkdtempSync(join(tmpdir(), 'qqbot-check-'));
 const opts = { scratchDir, packageDir: root, repoRoot: root, language: 'en' as const, hasWebUiClient: true };
 try {
   if (process.argv[2] === 'describe') {

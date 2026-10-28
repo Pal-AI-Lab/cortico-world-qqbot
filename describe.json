@@ -1,7 +1,7 @@
 {
   "tools": [
     {
-      "name": "qqofficial_send_message",
+      "name": "qqbot_send_message",
       "description": "发一条 QQ 消息：文字，可以带一张图片(image),或者单独发一条语音(voice)。reply_to 填消息编号，回复那一条，会话随之确定;quote=true 时在 QQ 里显示引用。不填 reply_to 时自动回复这个会话里还能回复的最近一条，没有就按主动消息发送;delivery=proactive 强制主动消息。",
       "parameters": {
         "type": "object",
@@ -64,7 +64,7 @@
       }
     },
     {
-      "name": "qqofficial_send_media",
+      "name": "qqbot_send_media",
       "description": "发视频、文件，或一次发多张图片(items,最多 8 项)。url 与 blob(log:/mem: 句柄)二选一;fileType:1 图片、2 视频、3 语音、4 文件。部分失败时已发出的不会重发。",
       "parameters": {
         "type": "object",
@@ -153,7 +153,7 @@
       }
     },
     {
-      "name": "qqofficial_stream_message",
+      "name": "qqbot_stream_message",
       "description": "followModel=true:下一轮你写的公开正文会自动发到这个会话，私聊里逐字显示，其他会话在本轮结束后整段发出。手动分片时传 text,续片沿用返回的 streamId,finish 默认 true。",
       "parameters": {
         "type": "object",
@@ -213,7 +213,7 @@
       }
     },
     {
-      "name": "qqofficial_delete_message",
+      "name": "qqbot_delete_message",
       "description": "撤回你发过的一条消息，填它的编号。",
       "parameters": {
         "type": "object",
@@ -237,7 +237,7 @@
       }
     },
     {
-      "name": "qqofficial_read_history",
+      "name": "qqbot_read_history",
       "description": "读 QQ 会话的历史消息，可按会话(to)筛选，before 填编号往前翻。",
       "parameters": {
         "type": "object",
@@ -268,7 +268,7 @@
       }
     },
     {
-      "name": "qqofficial_read_attachment",
+      "name": "qqbot_read_attachment",
       "description": "读取一条消息里的附件(语音转成 WAV)。message 填消息编号;index 是第几个附件，默认第 1 个;quoted=true 读它引用的那条消息里的附件。",
       "parameters": {
         "type": "object",
@@ -300,7 +300,7 @@
       }
     },
     {
-      "name": "qqofficial_list_targets",
+      "name": "qqbot_list_targets",
       "description": "列出认识的 QQ 会话、地址，以及现在还能不能被动回复。定时提醒里记下准确地址，到点后用 delivery=proactive 发送。",
       "parameters": {
         "type": "object",
@@ -323,7 +323,7 @@
       }
     },
     {
-      "name": "qqofficial_ack_interaction",
+      "name": "qqbot_ack_interaction",
       "description": "确认按钮互动:code=0 成功、1 失败、2 太频繁、3 重复、4 无权限、5 仅管理员可操作。",
       "parameters": {
         "type": "object",
@@ -354,7 +354,7 @@
   ],
   "events": [
     {
-      "type": "qqofficial.message",
+      "type": "qqbot.message",
       "trigger": "debounce",
       "description": {
         "zh": "收到一条 QQ 消息，渲染成一行可读文本，原始字段留在存档里。",
@@ -362,7 +362,7 @@
       }
     },
     {
-      "type": "qqofficial.notice",
+      "type": "qqbot.notice",
       "trigger": "debounce",
       "description": {
         "zh": "收到互动、关系变化或其他平台事件。",
@@ -370,7 +370,7 @@
       }
     },
     {
-      "type": "qqofficial.attachment",
+      "type": "qqbot.attachment",
       "trigger": "debounce",
       "description": {
         "zh": "消息里下载较慢的图片或语音，下载完成后单独送达。",
@@ -378,7 +378,7 @@
       }
     },
     {
-      "type": "qqofficial.sent",
+      "type": "qqbot.sent",
       "tags": [
         "speak"
       ],
@@ -388,21 +388,21 @@
       }
     },
     {
-      "type": "qqofficial.attempt",
+      "type": "qqbot.attempt",
       "description": {
         "zh": "发送前持久化的序号预留，不唤醒模型。",
         "en": "A sequence reservation persisted before sending; does not wake the model."
       }
     },
     {
-      "type": "qqofficial.removed",
+      "type": "qqbot.removed",
       "description": {
         "zh": "平台接受撤回请求的存档回执，不唤醒模型。",
         "en": "An archived recall receipt; does not wake the model."
       }
     },
     {
-      "type": "qqofficial.acknowledged",
+      "type": "qqbot.acknowledged",
       "description": {
         "zh": "平台接受互动确认的存档回执，不唤醒模型。",
         "en": "An archived interaction acknowledgement; does not wake the model."
@@ -411,10 +411,10 @@
   ],
   "prompts": [
     {
-      "key": "worlds.qqofficial.envPrompt",
+      "key": "worlds.qqbot.envPrompt",
       "title": "环境提示词",
       "role": "envPrompt",
-      "content": "{{qqofficial.environment}}\n\n{{qqofficial.conversations}}\n{{qqofficial.identity}}\n"
+      "content": "{{qqbot.environment}}\n\n{{qqbot.conversations}}\n{{qqbot.identity}}\n"
     }
   ]
 }

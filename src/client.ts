@@ -15,7 +15,7 @@ export interface QQOfficialClientOptions {
 export class QQOfficialApiError extends Error {
   readonly kind: 'anchor' | 'markdown' | 'newline' | 'rate' | 'proactive' | 'upload' | 'other';
   constructor(readonly status: number, readonly code: unknown, readonly traceId: string | null, readonly retryAfter: string | null, detail = '') {
-    super(`QQ Official HTTP ${status}; code=${typeof code === 'number' || typeof code === 'string' ? code : 'unknown'}; trace=${traceId ?? 'none'}; retry-after=${retryAfter ?? 'none'}`);
+    super(`QQ bot API HTTP ${status}; code=${typeof code === 'number' || typeof code === 'string' ? code : 'unknown'}; trace=${traceId ?? 'none'}; retry-after=${retryAfter ?? 'none'}`);
     // Interpret known rejection reasons without exposing platform response text (which may contain credentials).
     const n = Number(code);
     this.kind = [304103, 40034005, 40034026, 40034027, 40034128].includes(n) ? 'anchor'

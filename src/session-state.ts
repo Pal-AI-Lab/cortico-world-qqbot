@@ -22,19 +22,19 @@ export class QQSessionState {
     const meta = event.meta;
     const target = meta?.target as QQOfficialTarget | undefined;
     if (!target) return;
-    if (event.type === 'qqofficial.attempt') {
+    if (event.type === 'qqbot.attempt') {
       const key = this.key(target, meta!);
       this.sequences.set(key, Math.max(this.sequences.get(key) ?? 0, Number(meta!.msg_seq) || 0));
       return;
     }
-    if (!['qqofficial.message', 'qqofficial.notice'].includes(event.type)) return;
+    if (!['qqbot.message', 'qqbot.notice'].includes(event.type)) return;
     const key = targetKey(target);
     const session = this.targets.get(key) ?? { target, lastSeen: event.ts, proactive: 'unknown' as const };
     const data = meta?.data as JsonObject | undefined;
     session.lastSeen = event.ts;
     const label = data?.group_name ?? data?.channel_name ?? (data?.author as JsonObject | undefined)?.username;
     if (typeof label === 'string') session.label = label;
-    if (event.type === 'qqofficial.message' && typeof meta?.messageId === 'string') {
+    if (event.type === 'qqbot.message' && typeof meta?.messageId === 'string') {
       session.lastMessageId = meta.messageId;
       const at = typeof data?.timestamp === 'string' ? Date.parse(data.timestamp) : NaN;
       session.messageAt = Number.isFinite(at) ? Math.min(at, Date.parse(event.ts)) : Date.parse(event.ts);

@@ -12,7 +12,7 @@ const media = { url: text, blob: text, fileType: { type: 'integer', minimum: 1, 
 export function qqOfficialTools(language: ModelLanguage, execute: (action: QQOfficialAction, args: Record<string, unknown>, signal?: AbortSignal) => Promise<string | ToolOutcome>): ToolDef[] {
   const t = QQOFFICIAL_MODEL_TEXT[language];
   const define = (action: QQOfficialAction, name: string, properties: Record<string, unknown>, required: string[], tags: ToolDef['tags']): ToolDef => ({
-    name: `qqofficial_${name}`, description: t[action], tags,
+    name: `qqbot_${name}`, description: t[action], tags,
     parameters: { type: 'object', properties, required, additionalProperties: false },
     handler: async (args, ctx) => {
       try { return await execute(action, args, ctx.signal); }

@@ -6,7 +6,7 @@ import { QQOFFICIAL_EVENT_DESCRIPTIONS, QQOFFICIAL_TOOL_SUMMARIES } from './stri
 
 export function qqOfficialDefinition(options: Pick<QQOfficialWorldOptions, 'modelLanguage'> = {}): WorldDefinition<QQOfficialConfigSection> {
   return {
-    id: QQOFFICIAL_ID, label: 'QQ Official',
+    id: QQOFFICIAL_ID, label: 'QQ Bot',
     defaults: () => structuredClone(QQOFFICIAL_DEFAULTS),
     create: (context) => new QQOfficialWorld({ context, ...options }),
     describe: {
@@ -14,13 +14,13 @@ export function qqOfficialDefinition(options: Pick<QQOfficialWorldOptions, 'mode
         name, description, parameters, tags, summary: QQOFFICIAL_TOOL_SUMMARIES[name],
       })),
       events: [
-        { type: 'qqofficial.message', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.message },
-        { type: 'qqofficial.notice', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.notice },
-        { type: 'qqofficial.attachment', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.attachment },
-        { type: 'qqofficial.sent', tags: ['speak'], description: QQOFFICIAL_EVENT_DESCRIPTIONS.sent },
-        { type: 'qqofficial.attempt', description: QQOFFICIAL_EVENT_DESCRIPTIONS.attempt },
-        { type: 'qqofficial.removed', description: QQOFFICIAL_EVENT_DESCRIPTIONS.removed },
-        { type: 'qqofficial.acknowledged', description: QQOFFICIAL_EVENT_DESCRIPTIONS.acknowledged },
+        { type: 'qqbot.message', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.message },
+        { type: 'qqbot.notice', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.notice },
+        { type: 'qqbot.attachment', trigger: 'debounce', description: QQOFFICIAL_EVENT_DESCRIPTIONS.attachment },
+        { type: 'qqbot.sent', tags: ['speak'], description: QQOFFICIAL_EVENT_DESCRIPTIONS.sent },
+        { type: 'qqbot.attempt', description: QQOFFICIAL_EVENT_DESCRIPTIONS.attempt },
+        { type: 'qqbot.removed', description: QQOFFICIAL_EVENT_DESCRIPTIONS.removed },
+        { type: 'qqbot.acknowledged', description: QQOFFICIAL_EVENT_DESCRIPTIONS.acknowledged },
       ],
     },
   };

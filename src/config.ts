@@ -3,8 +3,8 @@ import type { ConfigGroup } from 'cortico/core/types.ts';
 import { qqOfficialText, QQOFFICIAL_DELIVERY_LABELS } from './strings.ts';
 import { integer } from './protocol.ts';
 
-export const QQOFFICIAL_ID = 'qqofficial';
-export const QQOFFICIAL_SECRET = 'CORTICO_QQOFFICIAL_APP_SECRET';
+export const QQOFFICIAL_ID = 'qqbot';
+export const QQOFFICIAL_SECRET = 'CORTICO_QQBOT_APP_SECRET';
 
 export interface QQOfficialConfigSection {
   enabled: boolean;
@@ -28,7 +28,7 @@ export interface QQOfficialConfigSection {
 export const QQOFFICIAL_DEFAULTS: QQOfficialConfigSection = {
   enabled: false, appId: '', transport: 'websocket', sandbox: false,
   intents: 1 << 25,
-  webhook: { host: '127.0.0.1', port: 6196, path: '/qqofficial/callback', maxBodyBytes: 1024 * 1024 },
+  webhook: { host: '127.0.0.1', port: 6196, path: '/qqbot/callback', maxBodyBytes: 1024 * 1024 },
   timeoutMs: 20000, reconnectMs: 1000, maxReconnectMs: 30000,
   maxMediaBytes: 100 * 1024 * 1024, modelLanguage: 'zh',
   autoFallback: true, proactiveIntervalMs: 3000, streamIntervalMs: 500, streamIdleMs: 15000, ffmpegPath: 'ffmpeg',
@@ -54,10 +54,10 @@ export function validateConfig(cfg: QQOfficialConfigSection): void {
 
 export function qqOfficialConfigGroup(language?: Language): ConfigGroup {
   const t = qqOfficialText(language);
-  const k = 'worlds.qqofficial';
+  const k = 'worlds.qqbot';
   const labels = QQOFFICIAL_DELIVERY_LABELS[language ?? 'zh'];
   return {
-    id: 'world:qqofficial', owner: 'world:qqofficial',
+    id: 'world:qqbot', owner: 'world:qqbot',
     schema: { type: 'object', title: t.settings, properties: {
       [`${k}.appId`]: { type: 'string', title: t.appId, 'x-hot': false },
       [`${k}.transport`]: { type: 'string', title: t.transport, enum: ['websocket', 'webhook'], 'x-hot': false },

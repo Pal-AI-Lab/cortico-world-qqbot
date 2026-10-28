@@ -88,9 +88,9 @@ export class QQOfficialWorld implements World {
   envPromptVars(): Record<string, string> {
     const lines = [...this.sessions.targets.values()].map(s => `- ${this.describeTarget(s.target, s.label)}(${address(s.target)})`);
     return {
-      'qqofficial.environment': this.text.environment,
-      'qqofficial.conversations': lines.length ? `${this.text.conversations}\n${lines.join('\n')}` : this.text.noConversations,
-      'qqofficial.identity': this.self?.name ? this.text.identity(this.self.name) : '',
+      'qqbot.environment': this.text.environment,
+      'qqbot.conversations': lines.length ? `${this.text.conversations}\n${lines.join('\n')}` : this.text.noConversations,
+      'qqbot.identity': this.self?.name ? this.text.identity(this.self.name) : '',
     };
   }
 
@@ -309,7 +309,7 @@ export class QQOfficialWorld implements World {
   private setState(state: QQOfficialConnectionState, detail = ''): void {
     if (state === this.state && detail === this.detail) return;
     this.state = state; this.detail = detail;
-    this.host?.log.info('qqofficial.connection', { state, detail });
+    this.host?.log.info('qqbot.connection', { state, detail });
   }
 
   private receive(event: QQOfficialDispatch): Promise<void> {
@@ -331,7 +331,7 @@ export class QQOfficialWorld implements World {
       for (const pending of media.late) {
         void pending.then(blob => blob && this.push('attachment', incoming.target, { messageId: incoming.messageId }, true,
           { ref: extra.ref }, this.text.lateAttachment(String(extra.ref)), [blob]))
-          .catch(error => this.host?.log.warn('qqofficial.attachment.push_failed', { error: String(error) }));
+          .catch(error => this.host?.log.warn('qqbot.attachment.push_failed', { error: String(error) }));
       }
       if (key) {
         this.seen.add(key);
@@ -378,7 +378,7 @@ export class QQOfficialWorld implements World {
         }
         return { bytes: media.bytes, mime: media.mime, ...(a.name ? { name: a.name } : {}), fallbackText: this.view.image };
       } catch (error) {
-        this.host?.log.warn('qqofficial.attachment.fetch_failed', { error: String(error) });
+        this.host?.log.warn('qqbot.attachment.fetch_failed', { error: String(error) });
         return null;
       }
     });
@@ -700,7 +700,7 @@ export class QQOfficialWorld implements World {
       void this.enqueue(async () => {
         if (this.streams.get(key) !== state || state.uncertain) return;
         await this.execute('stream', { target: state.target, streamId: state.streamId, content: '', finish: true });
-      }).catch(error => this.host?.log.warn('qqofficial.stream.close_failed', { error: String(error) }));
+      }).catch(error => this.host?.log.warn('qqbot.stream.close_failed', { error: String(error) }));
     }, Math.max(0, state.at + this.cfg.streamIdleMs - Date.now()));
     timer.unref?.(); this.streamTimers.set(key, timer);
   }
@@ -744,7 +744,7 @@ export class QQOfficialWorld implements World {
         streamId = String((result as SentResult).receipt.streamId);
       },
       error: error => {
-        this.host?.log.warn('qqofficial.stream.failed', { error: String(error) });
+        this.host?.log.warn('qqbot.stream.failed', { error: String(error) });
         if (this.host) void this.push('notice', destination, { eventType: 'REPLY_STREAM_FAILED', error: String(error), streamId,
           instruction: 'Some content may already be visible. Do not resend the complete reply.' }, true).catch(() => {});
       },
@@ -756,7 +756,7 @@ export class QQOfficialWorld implements World {
   webUi(language?: Language): WorldWebUiDecl {
     const t = qqOfficialText(language);
     return {
-      label: 'QQ Official',
+      label: 'QQ Bot',
       lamps: [{ label: t.connection, state: this.state === 'connecting' ? 'loading' : this.state, hint: this.detail || t[this.state] }],
       // A dedicated configuration panel keeps secret writes out of the generic config JSON.
       panels: [{ id: 'connection', title: t.connectionTab }, { id: 'configuration', title: t.configTab }],
@@ -768,7 +768,7 @@ export class QQOfficialWorld implements World {
               enabled: this.cfg.enabled, status: this.state, detail: this.detail, binding: this.binding.current(), text: t };
             if (panel === 'connection') return state;
             const group = qqOfficialConfigGroup(language);
-            const root = { worlds: { qqofficial: this.cfg } };
+            const root = { worlds: { qqbot: this.cfg } };
             return { ...state, group, values: Object.fromEntries(Object.keys(group.schema.properties).map((key) => [key, getByPath(root, key)])) };
           }
           if (panel === 'configuration') {
@@ -777,7 +777,7 @@ export class QQOfficialWorld implements World {
             const result = coerceGroupValues(qqOfficialConfigGroup(language), object(data.values), language);
             if ('error' in result) throw new Error(result.error);
             const next = structuredClone(this.cfg);
-            const root = { worlds: { qqofficial: next } };
+            const root = { worlds: { qqbot: next } };
             for (const [key, value] of Object.entries(result.values)) setByPath(root, key, value);
             validateConfig(next);
             const secret = typeof data.secret === 'string' ? data.secret : '';
@@ -805,11 +805,11 @@ export class QQOfficialWorld implements World {
         this.control = task.catch(() => undefined);
         return task;
       },
-      promptDocs: [{ key: 'worlds.qqofficial.envPrompt', title: t.promptTitle, description: t.promptDescription,
+      promptDocs: [{ key: 'worlds.qqbot.envPrompt', title: t.promptTitle, description: t.promptDescription,
         role: 'envPrompt', path: fileURLToPath(new URL('./ENV_PROMPT.md', import.meta.url)),
-        vars: [{ name: 'qqofficial.environment', description: t.promptDescription, multiline: true },
-          { name: 'qqofficial.conversations', description: t.promptConversations, multiline: true },
-          { name: 'qqofficial.identity', description: t.promptIdentity }] }],
+        vars: [{ name: 'qqbot.environment', description: t.promptDescription, multiline: true },
+          { name: 'qqbot.conversations', description: t.promptConversations, multiline: true },
+          { name: 'qqbot.identity', description: t.promptIdentity }] }],
     };
   }
 

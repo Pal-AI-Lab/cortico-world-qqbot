@@ -30,7 +30,7 @@ export function json(res: ServerResponse, body: unknown, status = 200): void {
 }
 
 export class TestHost implements WorldHost {
-  readonly dataDir = mkdtempSync(join(tmpdir(), 'qqofficial-events-'));
+  readonly dataDir = mkdtempSync(join(tmpdir(), 'qqbot-events-'));
   readonly store = new JsonlEventStore({ dataDir: this.dataDir, run: '20261024-000000', timezone: 'UTC' });
   readonly log = nullLogger();
   readonly pushes: Array<{ event: EventEnvelope; options?: PushOptions; blobs?: Parameters<WorldHost['pushEvent']>[0]['blobs'] }> = [];
@@ -52,7 +52,7 @@ export function context(overrides: Partial<QQOfficialConfigSection> = {}) {
   const cfg = { ...structuredClone(QQOFFICIAL_DEFAULTS), proactiveIntervalMs: 0, streamIntervalMs: 0, ...overrides };
   const secrets = new Map<string, string>();
   const value: WorldContext<QQOfficialConfigSection> = {
-    id: 'qqofficial', cfg, timezone: 'UTC', botName: 'test', botDir: '', packageDir: '', dataDir: '', repoRoot: '',
+    id: 'qqbot', cfg, timezone: 'UTC', botName: 'test', botDir: '', packageDir: '', dataDir: '', repoRoot: '',
     secret: (name) => secrets.get(name) ?? '', storeSecret: (name, value) => { secrets.set(name, value); },
     persist: (patch) => { Object.assign(cfg, patch); }, restart: async () => {},
   };
