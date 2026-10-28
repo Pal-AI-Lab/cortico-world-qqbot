@@ -35,7 +35,7 @@ export class QQOfficialBinding {
     const key = randomBytes(32);
     const data = await this.request('/lite/create_bind_task', { key: key.toString('base64') });
     const id = string(data.task_id, 'task_id');
-    const expiresAtMs = Date.now() + 10 * 60 * 1000;
+    const expiresAtMs = Date.now() + 3 * 60 * 1000;
     const url = `${this.baseUrl}/qqbot/openclaw/connect.html?task_id=${encodeURIComponent(id)}&_wv=2`;
     const qrDataUrl = await QRCode.toDataURL(url, { errorCorrectionLevel: 'M', margin: 4, width: 280 });
     this.task = { id, key, display: { url, qrDataUrl, expiresAtMs } };

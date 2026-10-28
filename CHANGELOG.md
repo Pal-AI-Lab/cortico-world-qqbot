@@ -10,6 +10,7 @@
 - A refused proactive message in a direct chat (40054013 or 40034105) is sent once as the period's wakeup message; a recipient who turned proactive messages off gets the wakeup message directly.
 - An @ in a group or channel wakes the model at once; direct chats still batch.
 - Render faces written in the older `[<face,id=13/>]` form.
+- QR binding follows QQ's three-minute task lifetime and renews an expired code up to three times in a row. Scanned credentials are checked for a token before they are saved; a secret that yields none asks for a new scan that creates a new bot.
 
 - Render model-facing text in the shape of Cortico's built-in QQ World: one line per message (`#n [conversation HH:MM] sender: text`) with faces by name, quotes, mentions and attachment placeholders; notices, send receipts and history as short lines instead of raw JSON. Original fields stay in `meta.data`.
 - Address tools with `to` (`c2c:<OpenID>` and so on) and short message numbers: `reply_to`, `message` and `before` take `#n`. `send_message` takes `text` plus an optional `image` or `voice`; `history` is now `read_history`; `read_attachment` takes a message number and a 1-based index. Object targets from earlier reminders are still accepted.

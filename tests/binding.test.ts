@@ -5,6 +5,7 @@ import jsQR from 'jsqr';
 import { QQOfficialBinding } from '../src/binding.ts';
 import { QQOfficialWorld } from '../src/world.ts';
 import { QQOFFICIAL_SECRET } from '../src/config.ts';
+import { qqOfficialText } from '../src/strings.ts';
 import { context, httpServer, json, readBody, SECRET } from './helpers.ts';
 
 const cleanup: Array<() => Promise<void>> = [];
@@ -20,8 +21,10 @@ describe('official QQ bot credential binding', () => {
   it('keeps the binding key server-side and persists decrypted credentials without returning the secret', async () => {
     let key: Buffer;
     let ready = false;
+    let tokenCode = 0;
     const server = await httpServer(async (req, res) => {
       const body = await readBody(req);
+      if (req.url === '/token') { json(res, tokenCode ? { code: tokenCode, message: 'invalid appid or secret' } : { access_token: 'token', expires_in: 7200 }); return; }
       if (req.url === '/lite/create_bind_task') { key = Buffer.from(body.key as string, 'base64'); json(res, { retcode: 0, data: { task_id: 'task/id' } }); }
       else if (!ready) json(res, { retcode: 0, data: { status: 1 } });
       else { expect(body.task_id).toBe('task/id'); json(res, { data: { status: 2, bot_appid: 123456, bot_encrypt_secret: encrypt(SECRET, key) } }); }
@@ -29,8 +32,15 @@ describe('official QQ bot credential binding', () => {
     cleanup.push(() => server.close());
     const ctx = context();
     ctx.value.restart = vi.fn(async () => {});
-    const world = new QQOfficialWorld({ context: ctx.value, endpoints: { bindingUrl: server.url } });
+    const world = new QQOfficialWorld({ context: ctx.value, endpoints: { bindingUrl: server.url, tokenUrl: `${server.url}/token` } });
     const invoke = world.webUi('en').invoke!;
+    // A scan whose secret yields no token asks for a new scan and saves nothing.
+    tokenCode = 100016; ready = true;
+    await invoke('connection', 'bind', []);
+    expect(await invoke('connection', 'poll', [])).toEqual({ kind: 'invalid', message: qqOfficialText('en').invalidCredentials });
+    expect(ctx.value.cfg.appId).toBe('');
+    expect(ctx.value.secret(QQOFFICIAL_SECRET)).toBe('');
+    tokenCode = 0; ready = false;
     const link = await invoke('connection', 'bind', []) as { url: string; qrDataUrl: string };
     expect(link).toEqual({ url: `${server.url}/qqbot/openclaw/connect.html?task_id=task%2Fid&_wv=2`, qrDataUrl: expect.stringMatching(/^data:image\/png;base64,/), expiresAtMs: expect.any(Number) });
     const qr = PNG.sync.read(Buffer.from(link.qrDataUrl.split(',')[1], 'base64'));
@@ -51,7 +61,7 @@ describe('official QQ bot credential binding', () => {
     expect(ctx.value.restart).toHaveBeenCalledOnce();
   });
 
-  it('expires the resumable task without a network request after ten minutes', async () => {
+  it('expires the resumable task without a network request after three minutes', async () => {
     let polls = 0;
     const server = await httpServer((req, res) => {
       if (req.url === '/lite/create_bind_task') json(res, { data: { task_id: 'task' } });

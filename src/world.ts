@@ -817,6 +817,15 @@ export class QQOfficialWorld implements World {
           if (method === 'poll') {
             const result = await this.binding.poll();
             if (result.kind !== 'bound') return { kind: result.kind, message: t[result.kind] };
+            // A scan that picks an existing bot has returned a secret that never yields a token; ask for a new scan instead.
+            try {
+              await new QQOfficialClient({ appId: result.appId, secret: result.secret, timeoutMs: this.cfg.timeoutMs,
+                tokenUrl: this.options.endpoints?.tokenUrl }).accessToken();
+            } catch (error) {
+              if (!(error instanceof QQOfficialApiError)) throw error;
+              this.binding.clear();
+              return { kind: 'invalid', message: t.invalidCredentials };
+            }
             this.saveCredentials(result.appId, result.secret);
             this.binding.clear();
             return { kind: 'bound', appId: result.appId, connectionError: await this.connect() };

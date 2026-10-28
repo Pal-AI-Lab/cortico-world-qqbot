@@ -46,6 +46,7 @@ it.each(['new', 'resumed'])('automatically completes a %s QR binding and moves c
   let polls = 0;
   const server = await httpServer(async (req, res) => {
     const body = await readBody(req);
+    if (req.url === '/token') { json(res, { access_token: 'token', expires_in: 7200 }); return; }
     if (req.url === '/lite/create_bind_task') {
       creates++; key = Buffer.from(body.key as string, 'base64'); json(res, { data: { task_id: 'task' } });
     } else if (++polls === 1) json(res, { data: { status: 1 } });
@@ -59,7 +60,7 @@ it.each(['new', 'resumed'])('automatically completes a %s QR binding and moves c
   cleanup.push(() => server.close());
   const state = context();
   state.value.restart = vi.fn(async () => {});
-  const world = new QQOfficialWorld({ context: state.value, endpoints: { bindingUrl: server.url } });
+  const world = new QQOfficialWorld({ context: state.value, endpoints: { bindingUrl: server.url, tokenUrl: `${server.url}/token` } });
   const declaration = world.webUi('en');
   expect(declaration.panels?.map((p) => p.title)).toEqual([text.connectionTab, text.configTab]);
   const invoke = declaration.invoke!;
@@ -139,19 +140,20 @@ it('waits for each poll and retries a transient failure', async () => {
   expect(poll).toHaveBeenCalledTimes(3);
 });
 
-it.each(['server', 'deadline'])('removes an expired QR and stops checking when it expires on the %s', async (mode) => {
+it.each(['server', 'deadline'])('renews a QR that expires on the %s three times, then waits for a click', async (mode) => {
   vi.useFakeTimers();
-  const task = pendingTask();
-  if (mode === 'deadline') task.expiresAtMs = Date.now() + 1000;
-  let state = waitingState(task);
+  const task = () => { const next = pendingTask(); if (mode === 'deadline') next.expiresAtMs = Date.now() + 1000; return next; };
+  let state = waitingState(task());
   const poll = vi.fn(async () => { state = waitingState(null); return { kind: 'expired' }; });
-  const p = panel((method) => (method === 'state' ? Promise.resolve(state) : poll()) as never);
+  const bind = vi.fn(async () => { const next = task(); state = waitingState(next); return next; });
+  const p = panel((method) => (method === 'state' ? Promise.resolve(state) : method === 'bind' ? bind() : poll()) as never);
   await bundle.panels.connection.mount(p.ctx);
-  await vi.advanceTimersByTimeAsync(10000);
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(bind).toHaveBeenCalledTimes(3);
   expect(p.root.textContent).toContain(text.expired);
   expect(p.root.querySelector('img')).toBeNull();
   expect(p.root.textContent).toContain(text.refreshQr);
-  expect(poll).toHaveBeenCalledTimes(mode === 'server' ? 1 : 0);
+  expect(poll).toHaveBeenCalledTimes(mode === 'server' ? 4 : 0);
 });
 
 it('cancels polling and ignores a late result after the panel unmounts', async () => {

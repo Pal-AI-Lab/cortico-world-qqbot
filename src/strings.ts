@@ -42,6 +42,7 @@ export interface QQOfficialStrings extends QQOfficialConnectionStrings {
   saved: string;
   pending: string;
   expired: string;
+  invalidCredentials: string;
   secretSet: string;
   secretMissing: string;
   offline: string;
@@ -78,6 +79,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "凭证已保存；启用或重启 World 后生效。",
     pending: "等待绑定",
     expired: "绑定已过期",
+    invalidCredentials: "这次扫码拿到的凭证用不了。请重新扫码，并在 QQ 里选择「新建机器人」。",
     secretSet: "AppSecret 已配置（留空保留）",
     secretMissing: "尚未配置 AppSecret",
     offline: "已离线",
@@ -112,6 +114,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "Credentials saved; enable or restart the World to apply.",
     pending: "Waiting for binding",
     expired: "Binding expired",
+    invalidCredentials: "The credentials from this scan do not work. Scan again and choose to create a new bot in QQ.",
     secretSet: "AppSecret configured (leave blank to keep)",
     secretMissing: "AppSecret not configured",
     offline: "Offline",
@@ -146,6 +149,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "憑證已儲存；啟用或重新啟動 World 後生效。",
     pending: "等待綁定",
     expired: "綁定已過期",
+    invalidCredentials: "這次掃碼取得的憑證無法使用。請重新掃碼，並在 QQ 裡選擇「新建機器人」。",
     secretSet: "AppSecret 已配置（留空保留）",
     secretMissing: "尚未配置 AppSecret",
     offline: "已離線",
@@ -180,6 +184,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "認証情報を保存しました。World を有効化または再起動すると反映されます。",
     pending: "連携待ち",
     expired: "連携リンクの期限切れ",
+    invalidCredentials: "今回のスキャンで得た認証情報は使えません。もう一度スキャンし、QQ で新しいボットを作成してください。",
     secretSet: "AppSecret 設定済み（空欄で保持）",
     secretMissing: "AppSecret 未設定",
     offline: "オフライン",
@@ -214,6 +219,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "인증 정보를 저장했습니다. World를 활성화하거나 재시작하면 적용됩니다.",
     pending: "연결 대기 중",
     expired: "연결 만료",
+    invalidCredentials: "이번 스캔으로 받은 인증 정보는 사용할 수 없습니다. 다시 스캔하고 QQ에서 새 봇 만들기를 선택하세요.",
     secretSet: "AppSecret 설정됨 (비워 두면 유지)",
     secretMissing: "AppSecret 미설정",
     offline: "오프라인",
@@ -248,6 +254,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "Identifiants enregistrés ; activez ou redémarrez le World pour les appliquer.",
     pending: "Association en attente",
     expired: "Association expirée",
+    invalidCredentials: "Les identifiants de ce scan ne fonctionnent pas. Scannez à nouveau et choisissez de créer un nouveau bot dans QQ.",
     secretSet: "AppSecret configuré (laisser vide pour conserver)",
     secretMissing: "AppSecret non configuré",
     offline: "Hors ligne",
@@ -282,6 +289,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "Zugangsdaten gespeichert; World aktivieren oder neu starten, um sie anzuwenden.",
     pending: "Warte auf Verknüpfung",
     expired: "Verknüpfung abgelaufen",
+    invalidCredentials: "Die Zugangsdaten aus diesem Scan funktionieren nicht. Bitte erneut scannen und in QQ einen neuen Bot erstellen.",
     secretSet: "AppSecret konfiguriert (leer lassen zum Beibehalten)",
     secretMissing: "AppSecret nicht konfiguriert",
     offline: "Offline",
@@ -316,6 +324,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "Credenciales guardadas; activa o reinicia el World para aplicarlas.",
     pending: "Esperando vinculación",
     expired: "Vinculación vencida",
+    invalidCredentials: "Las credenciales de este escaneo no funcionan. Escanea de nuevo y elige crear un bot nuevo en QQ.",
     secretSet: "AppSecret configurado (deja vacío para conservar)",
     secretMissing: "AppSecret sin configurar",
     offline: "Sin conexión",
@@ -350,6 +359,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "Credenciais salvas; ative ou reinicie o World para aplicá-las.",
     pending: "Aguardando vinculação",
     expired: "Vinculação expirada",
+    invalidCredentials: "As credenciais desta leitura não funcionam. Leia de novo e escolha criar um novo bot no QQ.",
     secretSet: "AppSecret configurado (deixe vazio para manter)",
     secretMissing: "AppSecret não configurado",
     offline: "Desconectado",
@@ -384,6 +394,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "Credenziali salvate; attiva o riavvia il World per applicarle.",
     pending: "In attesa di associazione",
     expired: "Associazione scaduta",
+    invalidCredentials: "Le credenziali di questa scansione non funzionano. Scansiona di nuovo e scegli di creare un nuovo bot in QQ.",
     secretSet: "AppSecret configurato (lascia vuoto per mantenere)",
     secretMissing: "AppSecret non configurato",
     offline: "Offline",
@@ -418,6 +429,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     saved: "Учётные данные сохранены; включите или перезапустите World для применения.",
     pending: "Ожидание привязки",
     expired: "Срок привязки истёк",
+    invalidCredentials: "Учётные данные из этого сканирования не работают. Отсканируйте ещё раз и выберите создание нового бота в QQ.",
     secretSet: "AppSecret настроен (пустое поле сохраняет значение)",
     secretMissing: "AppSecret не настроен",
     offline: "Не в сети",

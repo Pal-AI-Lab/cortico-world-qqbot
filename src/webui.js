@@ -1,7 +1,7 @@
 /** @typedef {import('./binding.ts').QQOfficialBindingTask} BindingTask */
 /** @typedef {{ appId: string, secretSet: boolean, enabled: boolean, status: 'offline' | 'connecting' | 'online' | 'error', detail: string, binding: BindingTask | null, text: import('./strings.ts').QQOfficialStrings }} ConnectionState */
 /** @typedef {ConnectionState & { group: import('cortico/core/types.ts').ConfigGroup, values: Record<string, string | number | boolean> }} ConfigurationState */
-/** @typedef {{ kind?: 'pending' | 'expired' | 'bound', appId?: string, connectionError?: string }} ConnectionResult */
+/** @typedef {{ kind?: 'pending' | 'expired' | 'invalid' | 'bound', appId?: string, message?: string, connectionError?: string }} ConnectionResult */
 /** @typedef {import('cortico/web/shared/client-panel.ts').WebUiPanelContext} PanelContext */
 
 const css = [
@@ -50,6 +50,8 @@ async function mountConnection(ctx) {
   layout.append(card, message, footer); ctx.root.append(layout);
   let busy = false;
   let expired = false;
+  // QR codes last about three minutes; renew them a few times before waiting for a click.
+  let renewals = 0;
   let generation = 0;
   /** @type {HTMLElement | null} */
   let countdown = null;
@@ -70,7 +72,7 @@ async function mountConnection(ctx) {
     const ready = configured();
     const online = ready && state.enabled && state.status === 'online';
     card.replaceChildren(); countdown = null;
-    card.append(ui.h('div', 'qq-connect-brand', 'QQ OFFICIAL'));
+    card.append(ui.h('div', 'qq-connect-brand', 'QQ BOT'));
     if (!waiting) card.append(ui.h('div', 'qq-connect-icon' + (online ? ' ok' : ''), online ? '✓' : 'QQ'));
     const title = waiting ? t.scanTitle : online ? t.success : busy && !ready ? t.qrLoading
       : ready && state.status === 'connecting' ? t.connecting : ready && state.status === 'error' ? t.error : t.connect;
@@ -115,7 +117,9 @@ async function mountConnection(ctx) {
     const tick = () => {
       if (!active(version) || !state.binding) return;
       if (Date.now() >= state.binding.expiresAtMs) {
-        state = { ...state, binding: null }; expired = true; render(); notify(t.expired); watch(); return;
+        state = { ...state, binding: null }; expired = true;
+        if (renewals < 3) { renewals++; void run('bind', true); return; }
+        render(); notify(t.expired); watch(); return;
       }
       updateClock(); clock = setTimeout(tick, 1000);
     };
@@ -130,6 +134,8 @@ async function mountConnection(ctx) {
           const result = await ctx.invoke('poll');
           if (!active(version)) return;
           if (result.kind === 'pending') { notify(''); schedule(); return; }
+          if (result.kind === 'expired' && renewals < 3) { renewals++; void run('bind', true); return; }
+          if (result.kind === 'invalid') { state = { ...state, binding: null }; expired = true; render(); notify(result.message || ''); watch(); return; }
           if (result.kind === 'bound' || result.kind === 'expired') {
             expired = result.kind === 'expired';
             // Remove the QR immediately, including when the next state request needs a retry.
@@ -153,10 +159,11 @@ async function mountConnection(ctx) {
     tick(); schedule();
   }
 
-  /** @param {string} method */
-  async function run(method) {
+  /** @param {string} method @param {boolean} renewal */
+  async function run(method, renewal = false) {
     cancel();
     const version = generation;
+    if (!renewal) renewals = 0;
     busy = true; expired = false; notify(''); render();
     try {
       if (method === 'bind') {
