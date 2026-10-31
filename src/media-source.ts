@@ -9,15 +9,21 @@ export function publicAddress(address: string): boolean {
   return isIP(address) === 4 ? !blocked.check(address, 'ipv4') : isIP(address) === 6 && /^[23]/i.test(address) && !/^2001:db8:/i.test(address);
 }
 
-/** Handles are resolved only by the host's attachment store, never as filesystem paths. */
+/**
+ * Handles are resolved only by the host's attachment store, never as filesystem paths. `log:` is a
+ * content hash; `mem:` is whatever the Persona keeps, for Cormini a workspace-relative path, so any
+ * printable name passes as long as it cannot climb out or start at a root.
+ */
 export function mediaBlobHandle(value: unknown): string {
-  if (typeof value !== 'string') throw new Error('Expected an existing log:/mem: attachment handle');
-  const match = /^(log|mem):([A-Za-z0-9][A-Za-z0-9._/-]*)$/.exec(value);
-  if (!match || (match[1] === 'log' && match[2].includes('/'))
-    || match[2].split('/').some(part => !part || part === '.' || part === '..')) {
-    throw new Error('Expected an existing log:/mem: attachment handle; paths and traversal are not accepted');
+  const handle = typeof value === 'string' ? value : '';
+  const log = /^log:[A-Za-z0-9][A-Za-z0-9._-]*$/.test(handle);
+  const mem = /^mem:[^\\%\p{Cc}]+$/u.test(handle) && !/^mem:(?:\/|[A-Za-z]:)/.test(handle)
+    && handle.slice(4).split('/').every(part => part && part !== '.' && part !== '..');
+  if (!log && !mem) {
+    throw new Error('Expected a log: handle from a [blob ...] line, or mem: followed by a workspace-relative path '
+      + 'separated with / (for example mem:images/cat.png); local paths, backslashes, % and .. are not accepted');
   }
-  return value;
+  return handle;
 }
 
 /** Public downloads used for audio conversion. DNS is pinned for each hop; no bot headers are sent. */

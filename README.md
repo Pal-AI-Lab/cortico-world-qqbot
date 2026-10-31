@@ -67,7 +67,7 @@ On the World's **Connection** tab, choose to scan with mobile QQ, scan the code,
 - A scanned bot is a personal bot: by default only you can message it directly; it can join only groups you own or manage; anyone else must be added as a test user under Development settings on the QQ open platform.
 - While the bot is not connected, mobile QQ shows it as offline.
 
-AppID, AppSecret and transport settings live on the **Configuration** tab, where credentials can also be entered by hand. The AppSecret is shown only as configured. AppID is stored at `worlds.qqbot.appId`; the AppSecret is stored through `WorldContext.storeSecret` as `CORTICO_QQBOT_APP_SECRET` in the deployment environment. Leaving AppSecret blank keeps the saved value for the same AppID; a new AppID needs a new AppSecret.
+AppID, AppSecret and transport settings live on the **Configuration** tab, where credentials can also be entered by hand. The AppSecret is shown only as configured. AppID is stored at `worlds.qq-official.appId`; the AppSecret is stored through `WorldContext.storeSecret` as `CORTICO_QQBOT_APP_SECRET` in the deployment environment. Leaving AppSecret blank keeps the saved value for the same AppID; a new AppID needs a new AppSecret.
 
 The binding page is QQ's `/qqbot/openclaw/connect.html`. This extension is unrelated to the OpenClaw project and only uses QQ's binding and bot APIs.
 
@@ -150,7 +150,7 @@ To send a local image, audio clip, video or document, first upload it through th
 
 ## Configuration
 
-All keys are under `worlds.qqbot`. Defaults and validation are in [`src/config.ts`](src/config.ts).
+All keys are under `worlds.qq-official`. Defaults and validation are in [`src/config.ts`](src/config.ts).
 
 | Key | Default | Effect |
 | --- | --- | --- |

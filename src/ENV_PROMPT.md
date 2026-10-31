@@ -1,4 +1,4 @@
-{{qqbot.environment}}
+{{qqOfficial.environment}}
 
-{{qqbot.conversations}}
-{{qqbot.identity}}
+{{qqOfficial.conversations}}
+{{qqOfficial.identity}}

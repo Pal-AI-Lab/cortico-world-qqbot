@@ -1,2 +1,4 @@
+allowBuilds:
+  esbuild: set this to true or false
 minimumReleaseAgeExclude:
   - cortico@0.2.6

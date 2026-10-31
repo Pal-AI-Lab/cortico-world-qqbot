@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url';
 import { basename } from 'node:path';
-import type { Language } from 'cortico/core/language.ts';
+import { LocalizedError, type Language } from 'cortico/core/language.ts';
 import type { BlobInput, EventEnvelope, OutputTap, ToolDef, ToolOutcome, World, WorldWebUiDecl, WorldHost } from 'cortico/core/types.ts';
 import { nowIso } from 'cortico/core/util.ts';
 import type { WorldContext } from 'cortico/world.ts';
@@ -88,9 +88,9 @@ export class QQOfficialWorld implements World {
   envPromptVars(): Record<string, string> {
     const lines = [...this.sessions.targets.values()].map(s => `- ${this.describeTarget(s.target, s.label)}(${address(s.target)})`);
     return {
-      'qqbot.environment': this.text.environment,
-      'qqbot.conversations': lines.length ? `${this.text.conversations}\n${lines.join('\n')}` : this.text.noConversations,
-      'qqbot.identity': this.self?.name ? this.text.identity(this.self.name) : '',
+      'qqOfficial.environment': this.text.environment,
+      'qqOfficial.conversations': lines.length ? `${this.text.conversations}\n${lines.join('\n')}` : this.text.noConversations,
+      'qqOfficial.identity': this.self?.name ? this.text.identity(this.self.name) : '',
     };
   }
 
@@ -253,9 +253,11 @@ export class QQOfficialWorld implements World {
   }
 
   async start(host: WorldHost): Promise<void> {
+    const boundSecret = this.options.context.secret(QQOFFICIAL_SECRET);
+    if (!this.cfg.appId?.trim() || !boundSecret?.trim()) throw new LocalizedError(language => qqOfficialText(language).notBound);
     validateConfig(this.cfg);
     this.appId = string(this.cfg.appId, 'AppID');
-    const secret = string(this.options.context.secret(QQOFFICIAL_SECRET), 'AppSecret');
+    const secret = string(boundSecret, 'AppSecret');
     this.host = host;
     this.abort = new AbortController();
     const saved = host.store.range({ source: this.id });
@@ -328,7 +330,7 @@ export class QQOfficialWorld implements World {
   private setState(state: QQOfficialConnectionState, detail = ''): void {
     if (state === this.state && detail === this.detail) return;
     this.state = state; this.detail = detail;
-    this.host?.log.info('qqbot.connection', { state, detail });
+    this.host?.log.info('qq-official.connection', { state, detail });
   }
 
   private receive(event: QQOfficialDispatch): Promise<void> {
@@ -354,7 +356,7 @@ export class QQOfficialWorld implements World {
       for (const pending of media.late) {
         void pending.then(blob => blob && this.push('attachment', incoming.target, { messageId: incoming.messageId }, true,
           { ref: extra.ref }, this.text.lateAttachment(String(extra.ref)), [blob]))
-          .catch(error => this.host?.log.warn('qqbot.attachment.push_failed', { error: String(error) }));
+          .catch(error => this.host?.log.warn('qq-official.attachment.push_failed', { error: String(error) }));
       }
       if (key) {
         this.seen.add(key);
@@ -401,7 +403,7 @@ export class QQOfficialWorld implements World {
         }
         return { bytes: media.bytes, mime: media.mime, ...(a.name ? { name: a.name } : {}), fallbackText: this.view.image };
       } catch (error) {
-        this.host?.log.warn('qqbot.attachment.fetch_failed', { error: String(error) });
+        this.host?.log.warn('qq-official.attachment.fetch_failed', { error: String(error) });
         return null;
       }
     });
@@ -726,7 +728,7 @@ export class QQOfficialWorld implements World {
       void this.enqueue(async () => {
         if (this.streams.get(key) !== state || state.uncertain) return;
         await this.execute('stream', { target: state.target, streamId: state.streamId, content: '', finish: true });
-      }).catch(error => this.host?.log.warn('qqbot.stream.close_failed', { error: String(error) }));
+      }).catch(error => this.host?.log.warn('qq-official.stream.close_failed', { error: String(error) }));
     }, Math.max(0, state.at + this.cfg.streamIdleMs - Date.now()));
     timer.unref?.(); this.streamTimers.set(key, timer);
   }
@@ -770,7 +772,7 @@ export class QQOfficialWorld implements World {
         streamId = String((result as SentResult).receipt.streamId);
       },
       error: error => {
-        this.host?.log.warn('qqbot.stream.failed', { error: String(error) });
+        this.host?.log.warn('qq-official.stream.failed', { error: String(error) });
         if (this.host) void this.push('notice', destination, { eventType: 'REPLY_STREAM_FAILED', error: String(error), streamId,
           instruction: 'Some content may already be visible. Do not resend the complete reply.' }, true).catch(() => {});
       },
@@ -794,7 +796,7 @@ export class QQOfficialWorld implements World {
               enabled: this.cfg.enabled, status: this.state, detail: this.detail, binding: this.binding.current(), text: t };
             if (panel === 'connection') return state;
             const group = qqOfficialConfigGroup(language);
-            const root = { worlds: { qqbot: this.cfg } };
+            const root = { worlds: { [QQOFFICIAL_ID]: this.cfg } };
             return { ...state, group, values: Object.fromEntries(Object.keys(group.schema.properties).map((key) => [key, getByPath(root, key)])) };
           }
           if (panel === 'configuration') {
@@ -803,7 +805,7 @@ export class QQOfficialWorld implements World {
             const result = coerceGroupValues(qqOfficialConfigGroup(language), object(data.values), language);
             if ('error' in result) throw new Error(result.error);
             const next = structuredClone(this.cfg);
-            const root = { worlds: { qqbot: next } };
+            const root = { worlds: { [QQOFFICIAL_ID]: next } };
             for (const [key, value] of Object.entries(result.values)) setByPath(root, key, value);
             validateConfig(next);
             const secret = typeof data.secret === 'string' ? data.secret : '';
@@ -840,11 +842,11 @@ export class QQOfficialWorld implements World {
         this.control = task.catch(() => undefined);
         return task;
       },
-      promptDocs: [{ key: 'worlds.qqbot.envPrompt', title: t.promptTitle, description: t.promptDescription,
+      promptDocs: [{ key: `worlds.${QQOFFICIAL_ID}.envPrompt`, title: t.promptTitle, description: t.promptDescription,
         role: 'envPrompt', path: fileURLToPath(new URL('./ENV_PROMPT.md', import.meta.url)),
-        vars: [{ name: 'qqbot.environment', description: t.promptDescription, multiline: true },
-          { name: 'qqbot.conversations', description: t.promptConversations, multiline: true },
-          { name: 'qqbot.identity', description: t.promptIdentity }] }],
+        vars: [{ name: 'qqOfficial.environment', description: t.promptDescription, multiline: true },
+          { name: 'qqOfficial.conversations', description: t.promptConversations, multiline: true },
+          { name: 'qqOfficial.identity', description: t.promptIdentity }] }],
     };
   }
 

@@ -3,7 +3,7 @@ import type { ConfigGroup } from 'cortico/core/types.ts';
 import { qqOfficialText, QQOFFICIAL_DELIVERY_LABELS } from './strings.ts';
 import { integer } from './protocol.ts';
 
-export const QQOFFICIAL_ID = 'qqbot';
+export const QQOFFICIAL_ID = 'qq-official';
 export const QQOFFICIAL_SECRET = 'CORTICO_QQBOT_APP_SECRET';
 
 export interface QQOfficialConfigSection {
@@ -54,10 +54,10 @@ export function validateConfig(cfg: QQOfficialConfigSection): void {
 
 export function qqOfficialConfigGroup(language?: Language): ConfigGroup {
   const t = qqOfficialText(language);
-  const k = 'worlds.qqbot';
+  const k = `worlds.${QQOFFICIAL_ID}`;
   const labels = QQOFFICIAL_DELIVERY_LABELS[language ?? 'zh'];
   return {
-    id: 'world:qqbot', owner: 'world:qqbot',
+    id: `world:${QQOFFICIAL_ID}`, owner: `world:${QQOFFICIAL_ID}`,
     schema: { type: 'object', title: t.settings, properties: {
       [`${k}.appId`]: { type: 'string', title: t.appId, 'x-hot': false },
       [`${k}.transport`]: { type: 'string', title: t.transport, enum: ['websocket', 'webhook'], 'x-hot': false },

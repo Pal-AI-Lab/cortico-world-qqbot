@@ -45,8 +45,11 @@ describe('host attachments and public media sources', () => {
     await expect(publicMedia('http://127.0.0.1/secret', 100, 1000, new AbortController().signal)).rejects.toThrow('non-public');
   });
   it('accepts host attachment identifiers without interpreting them as local paths', () => {
-    for (const handle of ['log:12345678', 'log:0123456789abcdef0123.png', 'mem:voice', 'mem:images/abc-123.png']) {
+    for (const handle of ['log:12345678', 'log:0123456789abcdef0123.png', 'mem:voice', 'mem:images/abc-123.png', 'mem:images/2026-10-30/seed 自画像.png']) {
       expect(mediaBlobHandle(handle)).toBe(handle);
+    }
+    for (const handle of ['images/cat.png', 'mem:images\\cat.png', 'mem:../secret.png', 'mem:/etc/passwd', 'mem:C:/x.png', 'mem:a//b.png', 'log:../x', 'log:a/b']) {
+      expect(() => mediaBlobHandle(handle)).toThrow('mem:images/cat.png');
     }
   });
 });

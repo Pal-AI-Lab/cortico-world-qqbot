@@ -169,7 +169,7 @@ describe('bounded downgrade and failure outcomes', () => {
     expect(requests[1].body.msg_id).toBeUndefined();
     expect(requests[2].body).toMatchObject({ content: '**hi**', msg_type: 0 });
     expect(requests[2].at - requests[1].at).toBeGreaterThanOrEqual(30);
-    const sent = host.store.range({ source: 'qqbot' }).filter(e => e.type === 'qqbot.sent');
+    const sent = host.store.range({ source: 'qq-official' }).filter(e => e.type === 'qq-official.sent');
     expect(sent).toHaveLength(1);
     expect(sent[0].meta?.fallbacks).toEqual(['proactive', 'text']);
   });
@@ -178,7 +178,7 @@ describe('bounded downgrade and failure outcomes', () => {
     mode = modeName;
     expect(await tool('send_message', { to: destination, text: 'hi', reply_to: 'in' })).toMatchObject({ failed: true });
     expect(requests).toHaveLength(1);
-    expect(host.store.range({ source: 'qqbot' }).filter(e => e.type === 'qqbot.sent')).toHaveLength(0);
+    expect(host.store.range({ source: 'qq-official' }).filter(e => e.type === 'qq-official.sent')).toHaveLength(0);
   });
 
   it('does not bypass content rejection or a disabled fallback setting', async () => {
@@ -290,7 +290,7 @@ describe('media and auxiliary tools', () => {
     expect(isSilk(Buffer.from(String(uploads[0].file_data), 'base64'))).toBe(true);
     incomingMedia = await audioToSilk(wav, { signal: new AbortController().signal, timeoutMs: 5000, ffmpegPath: 'ffmpeg' });
     await event('C2C_MESSAGE_CREATE', { id: 'voice-message', author: { user_openid: 'user' }, msg_elements: [{ attachments: [{ url: 'https://gchat.qpic.cn/voice', filename: 'voice.silk' }] }] });
-    const saved = host.store.range({ source: 'qqbot' }).find(e => e.meta?.messageId === 'voice-message')!;
+    const saved = host.store.range({ source: 'qq-official' }).find(e => e.meta?.messageId === 'voice-message')!;
     const outcome = await tool('read_attachment', { message: `#${String(saved.meta!.ref)}`, quoted: true }) as ToolOutcome;
     expect(outcome.failed, outcome.text).not.toBe(true);
     expect(outcome.blobs![0]).toMatchObject({ mime: 'audio/wav', name: 'voice.wav' });
@@ -304,7 +304,7 @@ describe('media and auxiliary tools', () => {
     await event('C2C_MESSAGE_CREATE', { id: 'voice-in', author: { user_openid: 'user' }, attachments: [{ url: 'https://gchat.qpic.cn/voice', content_type: 'voice' }] });
     await vi.waitFor(() => expect(host.pushes.flatMap(p => p.blobs ?? [])).toEqual([expect.objectContaining({ mime: 'audio/wav' })]), { timeout: 10000 });
     const carrier = host.pushes.find(p => p.blobs)!;
-    expect(carrier.event.text).toMatch(carrier.event.type === 'qqbot.message' ? /用户user: \[语音\]$/ : /^\[#1 的附件\]$/);
+    expect(carrier.event.text).toMatch(carrier.event.type === 'qq-official.message' ? /用户user: \[语音\]$/ : /^\[#1 的附件\]$/);
   });
 
   it('executes recall and interaction confirmation tools', async () => {
@@ -379,7 +379,7 @@ describe('model output streaming', () => {
     await vi.waitFor(() => expect(requests).toHaveLength(1));
     emit({ type: 'response.output_text.delta', delta: 'second' });
     world.outputTap()!.onRoundEnd!();
-    await vi.waitFor(() => expect(host.store.range({ source: 'qqbot' }).some(e => e.meta?.eventType === 'REPLY_STREAM_FAILED')).toBe(true));
+    await vi.waitFor(() => expect(host.store.range({ source: 'qq-official' }).some(e => e.meta?.eventType === 'REPLY_STREAM_FAILED')).toBe(true));
     await world.stop(); await start();
     expect(await tool('stream_message', { to: destination, streamId: 'sent-1', text: 'retry' })).toMatchObject({ failed: true });
     expect(requests).toHaveLength(2);
@@ -396,7 +396,7 @@ describe('model output streaming', () => {
     mode = 'no-stream';
     await tool('stream_message', { to: destination, reply_to: 'in', followModel: true, format: 'text' });
     emit({ type: 'response.output_text.delta', delta: 'first' });
-    await vi.waitFor(() => expect(host.store.range({ source: 'qqbot' }).some(e => e.meta?.eventType === 'REPLY_STREAM_BUFFERED')).toBe(true));
+    await vi.waitFor(() => expect(host.store.range({ source: 'qq-official' }).some(e => e.meta?.eventType === 'REPLY_STREAM_BUFFERED')).toBe(true));
     emit({ type: 'response.output_text.delta', delta: ' second' });
     world.outputTap()!.onRoundEnd!();
     await vi.waitFor(() => expect(requests).toHaveLength(2));
@@ -412,7 +412,7 @@ describe('model output streaming', () => {
     world.outputTap()!.onRoundEnd!(); world.onTurnEnded();
     await vi.waitFor(() => expect(requests).toHaveLength(3));
     expect(requests[2].body).toMatchObject({ content_raw: '\n', input_state: 10, index: 1 });
-    expect(host.store.range({ source: 'qqbot' }).filter(e => e.type === 'qqbot.sent')).toHaveLength(2);
+    expect(host.store.range({ source: 'qq-official' }).filter(e => e.type === 'qq-official.sent')).toHaveLength(2);
     await world.stop(); await start();
     expect(world['streams'].size).toBe(0);
   });

@@ -52,7 +52,7 @@ export function context(overrides: Partial<QQOfficialConfigSection> = {}) {
   const cfg = { ...structuredClone(QQOFFICIAL_DEFAULTS), proactiveIntervalMs: 0, streamIntervalMs: 0, ...overrides };
   const secrets = new Map<string, string>();
   const value: WorldContext<QQOfficialConfigSection> = {
-    id: 'qqbot', cfg, timezone: 'UTC', botName: 'test', botDir: '', packageDir: '', dataDir: '', repoRoot: '',
+    id: 'qq-official', cfg, timezone: 'UTC', botName: 'test', botDir: '', packageDir: '', dataDir: '', repoRoot: '',
     secret: (name) => secrets.get(name) ?? '', storeSecret: (name, value) => { secrets.set(name, value); },
     persist: (patch) => { Object.assign(cfg, patch); }, restart: async () => {},
   };

@@ -57,7 +57,7 @@ afterEach(async () => { await world?.stop(); await api?.close(); host?.close(); 
 describe('event stream integration', () => {
   it('returns attachment bytes through Core and rejects other accounts and absent attachments', async () => {
     await incoming('C2C_MESSAGE_CREATE', { id: 'media', author: { user_openid: 'user' }, attachments: [{ url: 'https://multimedia.nt.qq.com.cn/image.png', filename: 'photo.png' }] });
-    const message = `#${String(host.store.range({ source: 'qqbot' })[0].meta!.ref)}`;
+    const message = `#${String(host.store.range({ source: 'qq-official' })[0].meta!.ref)}`;
     expect(await tool('read_attachment', { message })).toMatchObject({ blobs: [{ bytes: Buffer.from([137, 80, 78, 71]), mime: 'image/png', name: 'photo.png' }] });
     expect(await tool('read_attachment', { message, index: 2 })).toMatchObject({ failed: true });
     await world.stop(); ctx.value.cfg.appId = 'other'; await start();
@@ -85,9 +85,9 @@ describe('event stream integration', () => {
       message_scene: { ext: [{ msg_idx: 'reference' }] } };
     expect((await incoming(event, data)).status).toBe(200);
     expect(messages).toEqual([]);
-    const saved = host.store.range({ source: 'qqbot' });
+    const saved = host.store.range({ source: 'qq-official' });
     expect(saved).toHaveLength(1);
-    expect(saved[0]).toMatchObject({ type: 'qqbot.message', origin: 'external', meta: { target, data, messageId: 'message', eventId: 'event' } });
+    expect(saved[0]).toMatchObject({ type: 'qq-official.message', origin: 'external', meta: { target, data, messageId: 'message', eventId: 'event' } });
     // An @ in a group or channel wakes at once, as in the built-in QQ World.
     expect(host.pushes[0].options).toMatchObject({ deliver: true, trigger });
   });
@@ -97,7 +97,7 @@ describe('event stream integration', () => {
     expect(requests.map((r) => r.status)).toEqual([200, 200]);
     await world.stop(); await start();
     expect((await incoming('FRIEND_ADD', { openid: 'user' })).status).toBe(200);
-    expect(host.store.range({ source: 'qqbot' })).toHaveLength(1);
+    expect(host.store.range({ source: 'qq-official' })).toHaveLength(1);
   });
 
   it('acknowledges only persisted callbacks so a failed disk write can be retried', async () => {
@@ -108,7 +108,7 @@ describe('event stream integration', () => {
     rmdirSync(file); renameSync(`${file}.saved`, file);
     expect((await incoming('FRIEND_ADD', { openid: 'second' }, 'second')).status).toBe(200);
     const reopened = new JsonlEventStore({ dataDir: host.dataDir, run: '20261024-000000' });
-    expect(reopened.range({ source: 'qqbot' }).map((e) => e.meta?.eventId)).toEqual(['first', 'second']);
+    expect(reopened.range({ source: 'qq-official' }).map((e) => e.meta?.eventId)).toEqual(['first', 'second']);
     expect(host.pushes).toHaveLength(2);
   });
 });
@@ -120,7 +120,7 @@ describe('outbound actions', () => {
     await world.stop(); await start(); await tool('send_message', args);
     expect(messages.map((m) => m.body.msg_seq)).toEqual([1, 2, 3]);
     expect(messages.every((m) => m.path === '/v2/groups/destination/messages' && m.body.msg_id === 'received')).toBe(true);
-    expect(host.pushes.filter((p) => p.event.type === 'qqbot.sent').every((p) => p.options?.deliver === false)).toBe(true);
+    expect(host.pushes.filter((p) => p.event.type === 'qq-official.sent').every((p) => p.options?.deliver === false)).toBe(true);
   });
 
   it('keeps DMS guild routing separate from C2C and channel message formats', async () => {
@@ -146,7 +146,7 @@ describe('outbound actions', () => {
   it('reports rejected sends as failures without manufacturing sent events', async () => {
     const rejected = await tool('send_message', { to: 'c2c:user', text: 'reject' });
     expect(rejected).toMatchObject({ failed: true, text: expect.stringContaining('40034105') });
-    expect(host.store.range({ source: 'qqbot' }).filter((e) => e.type === 'qqbot.sent')).toEqual([]);
+    expect(host.store.range({ source: 'qq-official' }).filter((e) => e.type === 'qq-official.sent')).toEqual([]);
     // A refused proactive message is retried once as the wakeup message of the period.
     expect(messages.map(m => m.body.is_wakeup)).toEqual([undefined, true]);
   });
@@ -178,13 +178,13 @@ describe('outbound actions', () => {
 
   it('addresses replies by message number and records them as the bot\'s own lines', async () => {
     await incoming('C2C_MESSAGE_CREATE', { id: 'platform-id', author: { user_openid: 'user' }, content: 'hi' }, 'in');
-    expect(world.envPromptVars()['qqbot.conversations']).toBe('下面是你正在参与的会话:\n- 私聊 用户user(c2c:user)');
+    expect(world.envPromptVars()['qqOfficial.conversations']).toBe('下面是你正在参与的会话:\n- 私聊 用户user(c2c:user)');
     expect(await tool('send_message', { reply_to: '#1', text: 'hello' })).toBe('[sent #2 → 私聊 用户user, 被动回复。这条消息还能回 3 次，还剩 30 分钟]');
     expect(messages[0]).toMatchObject({ path: '/v2/users/user/messages', body: { content: 'hello', msg_id: 'platform-id' } });
     host.blobs.set('mem:picture', { bytes: Uint8Array.of(1, 2, 3), mime: 'image/png' });
     expect(await tool('send_message', { reply_to: '#1', text: 'look', image: 'mem:picture' })).toBe('[sent #3 → 私聊 用户user, 被动回复。这条消息还能回 2 次，还剩 30 分钟]');
     expect(messages[1].body).toMatchObject({ msg_type: 7, content: 'look', msg_id: 'platform-id' });
-    const own = host.store.range({ source: 'qqbot' }).filter(e => e.type === 'qqbot.sent').map(e => e.text);
+    const own = host.store.range({ source: 'qq-official' }).filter(e => e.type === 'qq-official.sent').map(e => e.text);
     expect(own).toEqual([expect.stringMatching(/^#2 \[私聊 \d\d:\d\d\] 你: hello$/), expect.stringMatching(/^#3 \[私聊 \d\d:\d\d\] 你: look \[图片\]$/)]);
     expect(await tool('send_message', { reply_to: '#1', to: 'c2c:other', text: 'x' })).toMatchObject({ failed: true });
   });

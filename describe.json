@@ -354,7 +354,7 @@
   ],
   "events": [
     {
-      "type": "qqbot.message",
+      "type": "qq-official.message",
       "trigger": "debounce",
       "description": {
         "zh": "收到一条 QQ 消息，渲染成一行可读文本，原始字段留在存档里。",
@@ -362,7 +362,7 @@
       }
     },
     {
-      "type": "qqbot.notice",
+      "type": "qq-official.notice",
       "trigger": "debounce",
       "description": {
         "zh": "收到互动、关系变化或其他平台事件。",
@@ -370,7 +370,7 @@
       }
     },
     {
-      "type": "qqbot.attachment",
+      "type": "qq-official.attachment",
       "trigger": "debounce",
       "description": {
         "zh": "消息里下载较慢的图片或语音，下载完成后单独送达。",
@@ -378,7 +378,7 @@
       }
     },
     {
-      "type": "qqbot.sent",
+      "type": "qq-official.sent",
       "tags": [
         "speak"
       ],
@@ -388,21 +388,21 @@
       }
     },
     {
-      "type": "qqbot.attempt",
+      "type": "qq-official.attempt",
       "description": {
         "zh": "发送前持久化的序号预留，不唤醒模型。",
         "en": "A sequence reservation persisted before sending; does not wake the model."
       }
     },
     {
-      "type": "qqbot.removed",
+      "type": "qq-official.removed",
       "description": {
         "zh": "平台接受撤回请求的存档回执，不唤醒模型。",
         "en": "An archived recall receipt; does not wake the model."
       }
     },
     {
-      "type": "qqbot.acknowledged",
+      "type": "qq-official.acknowledged",
       "description": {
         "zh": "平台接受互动确认的存档回执，不唤醒模型。",
         "en": "An archived interaction acknowledgement; does not wake the model."
@@ -411,10 +411,10 @@
   ],
   "prompts": [
     {
-      "key": "worlds.qqbot.envPrompt",
+      "key": "worlds.qq-official.envPrompt",
       "title": "环境提示词",
       "role": "envPrompt",
-      "content": "{{qqbot.environment}}\n\n{{qqbot.conversations}}\n{{qqbot.identity}}\n"
+      "content": "{{qqOfficial.environment}}\n\n{{qqOfficial.conversations}}\n{{qqOfficial.identity}}\n"
     }
   ]
 }
