@@ -45,7 +45,7 @@ async function mountConnection(ctx) {
   message.setAttribute('role', 'status');
   const footer = ui.h('div', 'qq-connect-footer');
   const settings = ui.h('a', null, t.manageConfig);
-  settings.href = '#/provider/' + encodeURIComponent(ctx.pageId || 'world:qqbot') + '/configuration';
+  settings.href = '#/provider/' + encodeURIComponent(ctx.pageId || 'world:qq-official') + '/configuration';
   footer.append(settings);
   layout.append(card, message, footer); ctx.root.append(layout);
   let busy = false;
@@ -204,9 +204,9 @@ async function mountConfiguration(ctx) {
   const advanced = ui.foldSheet('connection-settings', { title: t.settings, defaultOpen: false });
   const fields = ui.h('fieldset', 'qq-settings-grid');
   /** @type {Record<string, () => string | number | boolean>} */
-  const values = { 'worlds.qqbot.appId': () => appId.value.trim() };
+  const values = { 'worlds.qq-official.appId': () => appId.value.trim() };
   for (const [key, property] of Object.entries(state.group.schema.properties)) {
-    if (key === 'worlds.qqbot.appId') continue;
+    if (key === 'worlds.qq-official.appId') continue;
     if (property.type === 'boolean') {
       const checkbox = ui.checkbox(property.title, { checked: state.values[key] === true });
       values[key] = () => checkbox.checked; fields.append(checkbox.el);

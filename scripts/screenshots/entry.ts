@@ -31,7 +31,7 @@ const abort = new AbortController();
 const ui = sdkUi.createWebUi({ memo: { get: (_k: string, fallback: unknown) => fallback, set: () => {} }, overlayHost: document.body, signal: abort.signal } as never);
 const snapshot = await state();
 const ctx = {
-  root: panelRoot, signal: abort.signal, ui, pageId: 'world:qqbot', refresh: async () => {},
+  root: panelRoot, signal: abort.signal, ui, pageId: 'world:qq-official', refresh: async () => {},
   invoke: async (method: string) => (method === 'poll' ? { kind: 'pending' } : snapshot),
 };
 await bundle.panels[mode === 'configuration' ? 'configuration' : 'connection'].mount(ctx as never);

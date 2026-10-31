@@ -38,6 +38,7 @@ export interface QQOfficialStrings extends QQOfficialConnectionStrings {
   credentials: string;
   save: string;
   bind: string;
+  notBound: string;
   open: string;
   saved: string;
   pending: string;
@@ -75,6 +76,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "凭证",
     save: "保存凭证",
     bind: "获取绑定链接",
+    notBound: "还没有绑定机器人。请在「连接」页签扫码绑定，或在「配置」页签填写 AppID 和 AppSecret。",
     open: "打开绑定页面",
     saved: "凭证已保存；启用或重启 World 后生效。",
     pending: "等待绑定",
@@ -110,6 +112,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "Credentials",
     save: "Save credentials",
     bind: "Get binding link",
+    notBound: "No bot is bound yet. Scan the QR code on the Connection tab, or enter the AppID and AppSecret on the Configuration tab.",
     open: "Open binding page",
     saved: "Credentials saved; enable or restart the World to apply.",
     pending: "Waiting for binding",
@@ -145,6 +148,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "憑證",
     save: "儲存憑證",
     bind: "取得綁定連結",
+    notBound: "還沒有綁定機器人。請在「連線」頁籤掃碼綁定，或在「配置」頁籤填寫 AppID 和 AppSecret。",
     open: "開啟綁定頁面",
     saved: "憑證已儲存；啟用或重新啟動 World 後生效。",
     pending: "等待綁定",
@@ -180,6 +184,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "認証情報",
     save: "認証情報を保存",
     bind: "連携リンクを取得",
+    notBound: "まだボットが連携されていません。「接続」タブで QR コードを読み取るか、「設定」タブで AppID と AppSecret を入力してください。",
     open: "連携ページを開く",
     saved: "認証情報を保存しました。World を有効化または再起動すると反映されます。",
     pending: "連携待ち",
@@ -215,6 +220,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "인증 정보",
     save: "인증 정보 저장",
     bind: "연결 링크 받기",
+    notBound: "아직 연결된 봇이 없습니다. \"연결\" 탭에서 QR 코드를 스캔하거나 \"설정\" 탭에서 AppID와 AppSecret을 입력하세요.",
     open: "연결 페이지 열기",
     saved: "인증 정보를 저장했습니다. World를 활성화하거나 재시작하면 적용됩니다.",
     pending: "연결 대기 중",
@@ -250,6 +256,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "Identifiants",
     save: "Enregistrer les identifiants",
     bind: "Obtenir le lien d’association",
+    notBound: "Aucun bot n’est encore associé. Scannez le code QR dans l’onglet Connexion, ou saisissez l’AppID et l’AppSecret dans l’onglet Configuration.",
     open: "Ouvrir la page d’association",
     saved: "Identifiants enregistrés ; activez ou redémarrez le World pour les appliquer.",
     pending: "Association en attente",
@@ -285,6 +292,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "Zugangsdaten",
     save: "Zugangsdaten speichern",
     bind: "Verknüpfungslink abrufen",
+    notBound: "Es ist noch kein Bot verknüpft. Scannen Sie den QR-Code im Tab „Verbindung“ oder geben Sie AppID und AppSecret im Tab „Konfiguration“ ein.",
     open: "Verknüpfungsseite öffnen",
     saved: "Zugangsdaten gespeichert; World aktivieren oder neu starten, um sie anzuwenden.",
     pending: "Warte auf Verknüpfung",
@@ -320,6 +328,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "Credenciales",
     save: "Guardar credenciales",
     bind: "Obtener enlace de vinculación",
+    notBound: "Todavía no hay un bot vinculado. Escanea el código QR en la pestaña Conexión o ingresa el AppID y el AppSecret en la pestaña Configuración.",
     open: "Abrir página de vinculación",
     saved: "Credenciales guardadas; activa o reinicia el World para aplicarlas.",
     pending: "Esperando vinculación",
@@ -355,6 +364,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "Credenciais",
     save: "Salvar credenciais",
     bind: "Obter link de vinculação",
+    notBound: "Ainda não há um bot vinculado. Escaneie o QR code na aba Conexão ou informe o AppID e o AppSecret na aba Configuração.",
     open: "Abrir página de vinculação",
     saved: "Credenciais salvas; ative ou reinicie o World para aplicá-las.",
     pending: "Aguardando vinculação",
@@ -390,6 +400,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "Credenziali",
     save: "Salva credenziali",
     bind: "Ottieni link di associazione",
+    notBound: "Nessun bot è ancora associato. Scansiona il codice QR nella scheda Connessione oppure inserisci AppID e AppSecret nella scheda Configurazione.",
     open: "Apri pagina di associazione",
     saved: "Credenziali salvate; attiva o riavvia il World per applicarle.",
     pending: "In attesa di associazione",
@@ -425,6 +436,7 @@ const STRINGS: Record<Language, Omit<QQOfficialStrings, keyof QQOfficialConnecti
     credentials: "Учётные данные",
     save: "Сохранить учётные данные",
     bind: "Получить ссылку привязки",
+    notBound: "Бот ещё не привязан. Отсканируйте QR-код на вкладке «Подключение» или введите AppID и AppSecret на вкладке «Настройки».",
     open: "Открыть страницу привязки",
     saved: "Учётные данные сохранены; включите или перезапустите World для применения.",
     pending: "Ожидание привязки",

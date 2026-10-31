@@ -67,7 +67,7 @@ pnpm pack:api5
 - 扫码建出的是个人机器人：默认只有你自己能私聊;只能拉进你当群主或管理员的群;别人要私聊它，得在 QQ 开放平台「开发设置」里加成体验用户。
 - 机器人没连上时，手机 QQ 里会显示它「不在线」。
 
-AppID、AppSecret 和接入参数在「配置」页管理，也可以手动填写。AppSecret 只显示已配置状态，不回显;AppID 存在 `worlds.qqbot.appId`,AppSecret 通过 `WorldContext.storeSecret` 存为部署环境里的 `CORTICO_QQBOT_APP_SECRET`。AppID 不变时 AppSecret 留空会保留原值;换 AppID 必须同时给新的 AppSecret。
+AppID、AppSecret 和接入参数在「配置」页管理，也可以手动填写。AppSecret 只显示已配置状态，不回显;AppID 存在 `worlds.qq-official.appId`,AppSecret 通过 `WorldContext.storeSecret` 存为部署环境里的 `CORTICO_QQBOT_APP_SECRET`。AppID 不变时 AppSecret 留空会保留原值;换 AppID 必须同时给新的 AppSecret。
 
 绑定页是 QQ 的 `/qqbot/openclaw/connect.html`。本扩展与 OpenClaw 项目无关，只复用 QQ 开放的绑定和机器人接口。
 
@@ -150,7 +150,7 @@ QQ 对机器人入口的限制写在环境提示词里，每条附带应对方�
 
 ## 配置
 
-以下配置位于 `worlds.qqbot`，默认值和校验见 [`src/config.ts`](src/config.ts)。
+以下配置位于 `worlds.qq-official`，默认值和校验见 [`src/config.ts`](src/config.ts)。
 
 | 配置 | 默认值 | 生效方式 |
 | --- | --- | --- |

@@ -6,7 +6,8 @@ import { QQOfficialBinding } from '../src/binding.ts';
 import { QQOfficialWorld } from '../src/world.ts';
 import { QQOFFICIAL_SECRET } from '../src/config.ts';
 import { qqOfficialText } from '../src/strings.ts';
-import { context, httpServer, json, readBody, SECRET } from './helpers.ts';
+import { LocalizedError } from 'cortico/core/language.ts';
+import { context, httpServer, json, readBody, SECRET, TestHost } from './helpers.ts';
 
 const cleanup: Array<() => Promise<void>> = [];
 afterEach(async () => { vi.useRealTimers(); await Promise.all(cleanup.splice(0).map((fn) => fn())); });
@@ -85,7 +86,7 @@ describe('official QQ bot credential binding', () => {
     const ctx = context();
     const invoke = new QQOfficialWorld({ context: ctx.value, endpoints: { bindingUrl: server.url } }).webUi().invoke!;
     await invoke('connection', 'bind', []);
-    await invoke('configuration', 'save', [{ values: { 'worlds.qqbot.appId': 'manual' }, secret: SECRET }]);
+    await invoke('configuration', 'save', [{ values: { 'worlds.qq-official.appId': 'manual' }, secret: SECRET }]);
     expect(await invoke('connection', 'state', [])).toMatchObject({ appId: 'manual', secretSet: true, binding: null });
     expect(await invoke('connection', 'poll', [])).toMatchObject({ kind: 'expired' });
   });
@@ -108,8 +109,8 @@ describe('official QQ bot credential binding', () => {
   it('requires a new secret when changing accounts and rejects newline injection', async () => {
     const ctx = context({ appId: 'original' }); ctx.secrets.set(QQOFFICIAL_SECRET, SECRET);
     const invoke = new QQOfficialWorld({ context: ctx.value }).webUi().invoke!;
-    await expect(invoke('configuration', 'save', [{ values: { 'worlds.qqbot.appId': 'new' }, secret: '' }])).rejects.toThrow();
-    await expect(invoke('configuration', 'save', [{ values: { 'worlds.qqbot.appId': 'original' }, secret: 'value\nOTHER=value' }])).rejects.toThrow();
+    await expect(invoke('configuration', 'save', [{ values: { 'worlds.qq-official.appId': 'new' }, secret: '' }])).rejects.toThrow();
+    await expect(invoke('configuration', 'save', [{ values: { 'worlds.qq-official.appId': 'original' }, secret: 'value\nOTHER=value' }])).rejects.toThrow();
     expect(ctx.value.cfg.appId).toBe('original');
     expect(ctx.value.secret(QQOFFICIAL_SECRET)).toBe(SECRET);
   });
@@ -118,18 +119,18 @@ describe('official QQ bot credential binding', () => {
     const ctx = context({ appId: 'original', enabled: true }); ctx.secrets.set(QQOFFICIAL_SECRET, SECRET);
     ctx.value.restart = vi.fn(async () => {});
     const invoke = new QQOfficialWorld({ context: ctx.value }).webUi('en').invoke!;
-    await expect(invoke('configuration', 'save', [{ values: { 'worlds.qqbot.appId': 'new', 'worlds.qqbot.timeoutMs': 0 }, secret: 'new-secret' }])).rejects.toThrow();
+    await expect(invoke('configuration', 'save', [{ values: { 'worlds.qq-official.appId': 'new', 'worlds.qq-official.timeoutMs': 0 }, secret: 'new-secret' }])).rejects.toThrow();
     expect(ctx.value.cfg.appId).toBe('original');
     expect(ctx.value.secret(QQOFFICIAL_SECRET)).toBe(SECRET);
-    await invoke('configuration', 'save', [{ values: { 'worlds.qqbot.appId': 'new', 'worlds.qqbot.timeoutMs': 5000 }, secret: 'new-secret' }]);
+    await invoke('configuration', 'save', [{ values: { 'worlds.qq-official.appId': 'new', 'worlds.qq-official.timeoutMs': 5000 }, secret: 'new-secret' }]);
     expect(ctx.value.cfg).toMatchObject({ appId: 'new', timeoutMs: 5000, enabled: true });
     expect(ctx.value.secret(QQOFFICIAL_SECRET)).toBe('new-secret');
     expect(ctx.value.restart).toHaveBeenCalledOnce();
     const result = await invoke('configuration', 'state', []);
-    expect(result).toMatchObject({ secretSet: true, values: { 'worlds.qqbot.appId': 'new', 'worlds.qqbot.timeoutMs': 5000 } });
+    expect(result).toMatchObject({ secretSet: true, values: { 'worlds.qq-official.appId': 'new', 'worlds.qq-official.timeoutMs': 5000 } });
     expect(JSON.stringify(result)).not.toContain('new-secret');
     expect(JSON.stringify(ctx.value.cfg)).not.toContain('new-secret');
-    await invoke('configuration', 'save', [{ values: { 'worlds.qqbot.timeoutMs': 6000 }, secret: '' }]);
+    await invoke('configuration', 'save', [{ values: { 'worlds.qq-official.timeoutMs': 6000 }, secret: '' }]);
     expect(ctx.value.secret(QQOFFICIAL_SECRET)).toBe('new-secret');
   });
 
@@ -151,5 +152,15 @@ describe('official QQ bot credential binding', () => {
     const invoke = new QQOfficialWorld({ context: ctx.value }).webUi().invoke!;
     expect(await invoke('connection', 'connect', [])).toEqual({ connectionError: 'Connection unavailable' });
     expect(ctx.value.secret(QQOFFICIAL_SECRET)).toBe(SECRET);
+  });
+});
+
+describe('starting without a bound bot', () => {
+  it('says where to bind instead of throwing a bare field error', async () => {
+    const ctx = context({ appId: '' });
+    const world = new QQOfficialWorld({ context: ctx.value });
+    const error = await world.start(new TestHost()).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(LocalizedError);
+    expect((error as LocalizedError).describe('zh')).toBe(qqOfficialText('zh').notBound);
   });
 });

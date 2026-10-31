@@ -2,6 +2,12 @@
 
 # Changelog
 
+## 0.4.0
+
+- The World id is now `qq-official` (config `worlds.qq-official`, events `qq-official.*`, prompt variables `qqOfficial.*`). `cortico-world-qq-final` also uses `qqbot`, so whichever loaded second failed to load and the two shared one config section. Tools keep their `qqbot_*` names and the AppSecret keeps `CORTICO_QQBOT_APP_SECRET`. Enter the AppID again on the Configuration tab, or scan to bind again; earlier message history stays under the old id and is no longer read.
+- Turning the World on before a bot is bound says where to bind, in the interface language, instead of `Missing or invalid AppID`.
+- `mem:` attachment handles accept any workspace-relative path with `/`, including non-ASCII names such as `mem:images/自画像.png`. A rejected handle names the accepted shapes.
+
 ## 0.3.2
 
 - New market screenshots of the QQ Bot panels, rendered from the real panel code with sample data; `scripts/screenshots/` rebuilds them.
