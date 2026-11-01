@@ -99,12 +99,13 @@ Incoming messages become `qqbot.message`; interactions, relationship changes and
 The text that reaches the model has the same shape as Cortico's built-in QQ World, one line per message:
 
 ```text
-#12 [DM 21:32] user A1B2C3: [reply to #11] there? [emoji:呲牙] [image]
+#12 [DM 21:32] user (A1B2C3): [reply to #11] there? [emoji:呲牙] [image]
 #13 [DM 21:33] you: here
-[system] DM user A1B2C3 turned off your proactive messages
+#14 [group 9F2E01 21:34] Alice (7C4D10): @you look
+[system] DM user (A1B2C3) turned off your proactive messages
 ```
 
-`#n` is a short number the World assigns to a QQ message; tool arguments `reply_to`, `message` and `before` take it. Direct and group chats carry only OpenIDs, so lines show their tail; channels show nicknames. Faces render by name, quotes of recorded messages as `[reply to #n]`, unrecorded quotes with their text. Attachments show as `[image]`, `[voice]`, `[video name]` or `[file name]`. Send receipts read `[sent #n → conversation, reply]` and state whether the message went out as a reply, proactive or wakeup message, and any downgrade. The environment prompt lists known conversations and their addresses.
+`#n` is a short number the World assigns to a QQ message; tool arguments `reply_to`, `message` and `before` take it. Each sender is shown as `name (tail)`. The tail is the last 6 characters of the sender's `union_openid` when QQ sends a non-empty one, otherwise of the id QQ uses in that conversation (`user_openid` in direct chats, `member_openid` in groups, the user id in channels), so a changed nickname keeps the same tail. Direct and group chats usually carry no name, and the name reads `user` or `member`; channels show nicknames. The full ids are in `meta.sender` (`openid`, plus `union_openid` when present). Faces render by name, quotes of recorded messages as `[reply to #n]`, unrecorded quotes with their text. Attachments show as `[image]`, `[voice]`, `[video name]` or `[file name]`. Send receipts read `[sent #n → conversation, reply]` and state whether the message went out as a reply, proactive or wakeup message, and any downgrade. The environment prompt lists known conversations and their addresses.
 
 Each message carries a routing `target`; tools write addresses as `c2c:<OpenID>`, `group:<group OpenID>`, `channel:<channel ID>` or `dms:<guild_id>`:
 

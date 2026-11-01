@@ -304,7 +304,7 @@ describe('media and auxiliary tools', () => {
     await event('C2C_MESSAGE_CREATE', { id: 'voice-in', author: { user_openid: 'user' }, attachments: [{ url: 'https://gchat.qpic.cn/voice', content_type: 'voice' }] });
     await vi.waitFor(() => expect(host.pushes.flatMap(p => p.blobs ?? [])).toEqual([expect.objectContaining({ mime: 'audio/wav' })]), { timeout: 10000 });
     const carrier = host.pushes.find(p => p.blobs)!;
-    expect(carrier.event.text).toMatch(carrier.event.type === 'qq-official.message' ? /用户user: \[语音\]$/ : /^\[#1 的附件\]$/);
+    expect(carrier.event.text).toMatch(carrier.event.type === 'qq-official.message' ? /用户\(user\): \[语音\]$/ : /^\[#1 的附件\]$/);
   });
 
   it('executes recall and interaction confirmation tools', async () => {
