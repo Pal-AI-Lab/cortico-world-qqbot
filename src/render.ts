@@ -7,7 +7,8 @@ import type { JsonObject, QQOfficialTarget } from './protocol.ts';
 const TEXT = {
   zh: {
     c2c: '私聊', group: (id: string) => `群 ${id}`, channel: (id: string) => `频道 ${id}`, dms: '频道私信',
-    user: (id: string) => `用户${id}`, member: (id: string) => `成员${id}`, you: '你', everyone: '@全体成员',
+    user: (id: string) => `用户${id}`, unnamed: { user: '用户', member: '成员' }, person: (name: string, tail: string) => `${name}(${tail})`,
+    you: '你', everyone: '@全体成员',
     face: (name: string) => `[表情:${name}]`, faceUnknown: '[QQ表情]',
     image: '[图片]', voice: '[语音]', transcript: (text: string) => `[语音] ${text}`,
     video: (name: string) => name ? `[视频 ${name}]` : '[视频]', file: (name: string) => name ? `[文件 ${name}]` : '[文件]',
@@ -24,7 +25,8 @@ const TEXT = {
   },
   en: {
     c2c: 'DM', group: (id: string) => `group ${id}`, channel: (id: string) => `channel ${id}`, dms: 'guild DM',
-    user: (id: string) => `user ${id}`, member: (id: string) => `member ${id}`, you: 'you', everyone: '@everyone',
+    user: (id: string) => `user ${id}`, unnamed: { user: 'user', member: 'member' }, person: (name: string, tail: string) => `${name} (${tail})`,
+    you: 'you', everyone: '@everyone',
     face: (name: string) => `[emoji:${name}]`, faceUnknown: '[QQ emoji]',
     image: '[image]', voice: '[voice]', transcript: (text: string) => `[voice] ${text}`,
     video: (name: string) => name ? `[video ${name}]` : '[video]', file: (name: string) => name ? `[file ${name}]` : '[file]',
@@ -57,15 +59,35 @@ export function conversationLabel(target: QQOfficialTarget, t: RenderText): stri
 
 function str(value: unknown): string { return typeof value === 'string' ? value : ''; }
 
-/** Channel events carry names; C2C and group events carry only OpenIDs. */
+/**
+ * Who sent a message or notice. `openid` is the id of this scene: `user_openid` in direct chats, `member_openid`
+ * in groups (valid in that group only), the user id in channels, `openid` or the acting member in notices.
+ * `union_openid` stays the same across scenes; QQ documents that it may be empty.
+ */
+export interface SenderIds { openid: string; union_openid?: string }
+
+export function senderIds(data: JsonObject): SenderIds | undefined {
+  const author = data.author as JsonObject | undefined;
+  const from = author ?? data;
+  const openid = author ? str(author.user_openid) || str(author.member_openid) || str(author.id)
+    : str(data.group_member_openid) || str(data.user_openid) || str(data.openid);
+  if (!openid) return undefined;
+  const union = str(from.union_openid).trim();
+  return union ? { openid, union_openid: union } : { openid };
+}
+
+/** `name(tail)`: anyone can change a nickname, so the id tail is what tells people apart. */
+function person(name: string, ids: SenderIds | undefined, t: RenderText): string {
+  return t.person(name, ids ? shortId(ids.union_openid ?? ids.openid) : '?');
+}
+
+/** Channel events carry names; C2C and group events usually carry only OpenIDs. */
 export function senderName(data: JsonObject, t: RenderText): string {
   const author = (data.author ?? {}) as JsonObject;
   const member = (data.member ?? {}) as JsonObject;
   const named = str(member.nick) || str(author.username);
-  if (named) return named;
-  if (str(author.user_openid)) return t.user(shortId(str(author.user_openid)));
-  if (str(author.member_openid)) return t.member(shortId(str(author.member_openid)));
-  return t.user(shortId(str(author.id) || '?'));
+  const unnamed = str(author.member_openid) && !str(author.user_openid) ? t.unnamed.member : t.unnamed.user;
+  return person(named || unnamed, senderIds(data), t);
 }
 
 function decodeFace(tag: string, t: RenderText): string {
@@ -168,7 +190,8 @@ export function renderIncoming(data: JsonObject, ctx: IncomingContext): { text: 
 
 export function renderNotice(eventType: string, data: JsonObject, target: QQOfficialTarget | undefined, t: RenderText): string {
   const where = target ? `${conversationLabel(target, t)} ` : '';
-  const who = str(data.openid) ? `${t.user(shortId(str(data.openid)))} ` : '';
+  const ids = senderIds(data);
+  const who = ids ? `${person(t.unnamed.user, ids, t)} ` : '';
   const line = (text: string) => `${t.system} ${where}${text}`.replace(/\s+$/, '');
   switch (eventType) {
     case 'FRIEND_ADD': return line(`${who}${t.friendAdd}`);
@@ -181,8 +204,7 @@ export function renderNotice(eventType: string, data: JsonObject, target: QQOffi
     case 'GROUP_MSG_RECEIVE': return line(t.groupReceive);
     case 'INTERACTION_CREATE': {
       const resolved = ((data.data as JsonObject | undefined)?.resolved ?? {}) as JsonObject;
-      const actor = str(data.group_member_openid) || str(data.user_openid);
-      return line(`${actor ? `${t.user(shortId(actor))} ` : ''}${t.interaction(str(data.id), str(resolved.button_data) || str(resolved.button_id))}`);
+      return line(`${who}${t.interaction(str(data.id), str(resolved.button_data) || str(resolved.button_id))}`);
     }
     case 'STREAM_PART_REJECTED': return line(t.streamRejected);
     case 'REPLY_STREAM_BUFFERED': return line(t.streamBuffered(str(data.reason)));

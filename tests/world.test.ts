@@ -70,7 +70,7 @@ describe('event stream integration', () => {
     host.modelFacts.accepts = (mime: string) => mime.startsWith('image/');
     await incoming('C2C_MESSAGE_CREATE', { ...data, id: 'seeing' }, 'seeing');
     expect(host.pushes.map(p => p.blobs)).toEqual([undefined, [expect.objectContaining({ mime: 'image/png', bytes: Buffer.from([137, 80, 78, 71]) })]]);
-    expect(host.pushes[1].event.text).toMatch(/^#2 \[私聊 \d\d:\d\d\] 用户user: look \[图片\]$/);
+    expect(host.pushes[1].event.text).toMatch(/^#2 \[私聊 \d\d:\d\d\] 用户\(user\): look \[图片\]$/);
   });
 
   it.each([
@@ -193,6 +193,15 @@ describe('outbound actions', () => {
     await incoming('C2C_MESSAGE_CREATE', { id: 'one', author: { user_openid: 'a' }, content: 'one' }, 'one');
     await incoming('C2C_MESSAGE_CREATE', { id: 'two', author: { user_openid: 'b' }, content: 'two' }, 'two');
     const history = await tool('read_history', { to: 'c2c:a' }) as string;
-    expect(history).toMatch(/^#1 \[私聊 \d\d:\d\d\] 用户a: one$/);
+    expect(history).toMatch(/^#1 \[私聊 \d\d:\d\d\] 用户\(a\): one$/);
+  });
+
+  it('keeps the sender ids in meta', async () => {
+    await incoming('GROUP_AT_MESSAGE_CREATE', { id: 'g', group_openid: 'group', content: 'hi',
+      author: { member_openid: 'MEMBER000111', union_openid: 'UNION000333' }, member: { nick: '小明' } }, 'g');
+    await incoming('C2C_MESSAGE_CREATE', { id: 'c', author: { user_openid: 'USER000444' }, content: 'hi' }, 'c');
+    const saved = host.store.range({ source: 'qq-official' });
+    expect(saved.map(e => e.meta!.sender)).toEqual([{ openid: 'MEMBER000111', union_openid: 'UNION000333' }, { openid: 'USER000444' }]);
+    expect(saved[0].text).toMatch(/ 小明\(000333\): @你 hi$/);
   });
 });

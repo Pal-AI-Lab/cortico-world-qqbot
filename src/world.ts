@@ -22,7 +22,7 @@ import { QQUploader, MEDIA_LIMITS } from './upload.ts';
 import { QQSessionState } from './session-state.ts';
 import { sendWithFallback, waitUntil } from './delivery.ts';
 import { QQReplyStream } from './reply-stream.ts';
-import { address, attachmentsOf, conversationLabel, shortId, renderIncoming, renderNotice, renderSelf, renderText, type RenderText } from './render.ts';
+import { address, attachmentsOf, conversationLabel, shortId, renderIncoming, renderNotice, renderSelf, renderText, senderIds, type RenderText } from './render.ts';
 
 /** How long a message waits for its images before they follow as a separate event; matches the built-in QQ World. */
 const INLINE_WAIT_MS = 2500;
@@ -340,6 +340,8 @@ export class QQOfficialWorld implements World {
       if (incoming.key && this.seen.has(incoming.key)) return;
       const { key, ...data } = incoming;
       const extra: JsonObject = key ? { dedupKey: key } : {};
+      const sender = senderIds(incoming.data);
+      if (sender) extra.sender = sender;
       let text: string;
       let urgent = false;
       if (incoming.kind === 'message') {

@@ -2,6 +2,10 @@
 
 # Changelog
 
+## 0.4.1
+
+- Each sender now reads `name(tail)`, for example `小明(a1b2c3)`. The tail is the last 6 characters of `union_openid` when QQ sends a non-empty one, otherwise of the id QQ uses in that conversation (`member_openid` in groups, `user_openid` in direct chats, the user id in channels). Anyone can change a group nickname, so two people with the same name now read differently, and one person keeps the same tail after renaming. Senders without a name read `用户(a1b2c3)` or `成员(a1b2c3)`, and notices that name a user read the same way. The environment prompt says what the tail means. The full ids are in `meta.sender` (#3).
+
 ## 0.4.0
 
 - The World id is now `qq-official` (config `worlds.qq-official`, events `qq-official.*`, prompt variables `qqOfficial.*`). `cortico-world-qq-final` also uses `qqbot`, so whichever loaded second failed to load and the two shared one config section. Tools keep their `qqbot_*` names and the AppSecret keeps `CORTICO_QQBOT_APP_SECRET`. Enter the AppID again on the Configuration tab, or scan to bind again; earlier message history stays under the old id and is no longer read.
