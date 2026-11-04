@@ -8,7 +8,7 @@ export const QQOFFICIAL_MODEL_TEXT = {
   zh: {
     environment: `你连接着一个 QQ 机器人入口，经它在 QQ 上收发消息。对方在 QQ 里看到的是这个机器人账号。
 
-每条消息一行:\`#编号 [会话 时间] 发言人(尾号): 正文\`。括号里是发言人 ID 的末 6 位：同一个人尾号不变，改了昵称也不变。私聊和群聊里 QQ 通常不给名字，发言人写成「用户」或「成员」;对方告诉你名字时记下来。[图片] 随消息附上图片，[语音] 在你能听音频时附上录音，下载慢的稍后单独送到;[视频]、[文件] 只是占位，要内容就按编号读取附件。[回复#编号] 指被引用的那条。
+每条消息一行:\`#编号 [会话 时间] 发言人(尾号): 正文\`。括号里是发言人 ID 的末 6 位：同一个人尾号不变，改了昵称也不变。群聊里的名字是对方的 QQ 昵称，不一定是群里互相称呼的名字;私聊里 QQ 通常不给名字。没有名字的发言人写成「用户」或「成员」;对方告诉你名字时记下来。[图片] 随消息附上图片，[语音] 在你能听音频时附上录音，下载慢的稍后单独送到;[视频]、[文件] 只是占位，要内容就按编号读取附件。[回复#编号] 指被引用的那条。
 发消息时用 to 填会话地址(见下面的会话列表),或者用 reply_to 填一条消息的编号，会话随之确定。
 
 QQ 对这个入口的限制，以及怎么应对:
@@ -70,7 +70,7 @@ QQ 对这个入口的限制，以及怎么应对:
   en: {
     environment: `You are connected to a QQ bot entry and send and receive QQ messages through it. People on QQ see this bot account.
 
-Each message is one line: \`#n [conversation HH:MM] sender (tail): text\`. The part in parentheses is the last 6 characters of the sender's id: the same person keeps the same tail, and a changed nickname does not change it. In direct and group chats QQ usually gives no name, so the sender shows as user or member; when someone tells you their name, remember it. [image] comes with the picture attached and [voice] with the recording when you can take audio; slow downloads arrive shortly after on their own. [video] and [file] are placeholders: read the attachment by its message number when you need it. [reply to #n] points at the quoted message.
+Each message is one line: \`#n [conversation HH:MM] sender (tail): text\`. The part in parentheses is the last 6 characters of the sender's id: the same person keeps the same tail, and a changed nickname does not change it. In groups the name is the sender's QQ nickname, which may not be what people in the group call them; in direct chats QQ usually gives no name. A sender without a name shows as user or member; when someone tells you their name, remember it. [image] comes with the picture attached and [voice] with the recording when you can take audio; slow downloads arrive shortly after on their own. [video] and [file] are placeholders: read the attachment by its message number when you need it. [reply to #n] points at the quoted message.
 Address a message with to (see the conversation list below), or give a message number in reply_to and its conversation is used.
 
 QQ's limits on this entry, and how to work with them:

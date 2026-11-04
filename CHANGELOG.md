@@ -2,6 +2,10 @@
 
 # Changelog
 
+## 0.4.2
+
+- The environment prompt says that in groups the sender's name is their QQ nickname, which may not be what people in the group call them, and that direct chats usually come without a name. QQ's group message events carry no group nickname (#6).
+
 ## 0.4.1
 
 - Each sender now reads `name(tail)`, for example `小明(a1b2c3)`. The tail is the last 6 characters of `union_openid` when QQ sends a non-empty one, otherwise of the id QQ uses in that conversation (`member_openid` in groups, `user_openid` in direct chats, the user id in channels). Anyone can change a group nickname, so two people with the same name now read differently, and one person keeps the same tail after renaming. Senders without a name read `用户(a1b2c3)` or `成员(a1b2c3)`, and notices that name a user read the same way. The environment prompt says what the tail means. The full ids are in `meta.sender` (#3).
